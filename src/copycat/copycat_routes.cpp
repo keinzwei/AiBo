@@ -1,4 +1,5 @@
 // GPL-2.0-or-later. No engine access; all traversal must pass a live adapter validator.
+// 2026-10-27: explicit float queue seed for strict MSVC builds.
 #include "copycat_routes.h"
 #include <algorithm>
 #include <cmath>
@@ -83,7 +84,7 @@ std::vector<uint16_t> HumanRoutes::plan(const Vec& start,const Vec& goal,uint8_t
     const float infinity=std::numeric_limits<float>::max();std::vector<float> costs(nodes_.size(),infinity);
     std::vector<int> parent(nodes_.size(),-1);
     using Item=std::pair<float,int>;std::priority_queue<Item,std::vector<Item>,std::greater<Item>> queue;
-    costs[size_t(src)]=0;queue.push({0,src});int target=-1;float best=infinity;unsigned inspected=0;
+    costs[size_t(src)]=0;queue.push({0.0f,src});int target=-1;float best=infinity;unsigned inspected=0;
     while(!queue.empty()&&inspected++<512){auto current=queue.top();queue.pop();
         if(current.first>costs[size_t(current.second)]+.01f)continue;
         const auto& node=nodes_[size_t(current.second)];float remaining=distance(node.origin,goal);

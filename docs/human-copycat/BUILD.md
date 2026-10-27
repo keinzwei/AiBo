@@ -30,7 +30,7 @@ diekstrak manual mungkin membutuhkan CMAKE_RC_FLAGS dengan
 `--preprocessor=/path/i686-w64-mingw32-gcc-posix --preprocessor-arg=-E --preprocessor-arg=-xc --preprocessor-arg=-DRC_INVOKED`.
 Versi resource DLL 4.3.3.1; label produk AiBo 4.3.3.
 
-MSVC (resep disediakan; belum dijalankan):
+MSVC (Windows x86; hasil CI tersedia pada tab Actions):
 
 ```powershell
 cmake -S . -B build/windows -A Win32 -DAIBO_WITH_TLS=ON -DAIBO_WITH_AMXX=OFF -DAIBO_LTO=OFF
@@ -39,8 +39,7 @@ python tools/check_dll.py --arch i386 build/windows/Release/AiBo.dll
 ```
 
 Workflow .github/workflows/build.yml menjalankan regresi Linux serta build/ABI DLL
-Windows. Workflow ini diperbarui untuk struktur source saat ini; belum dijalankan
-melalui GitHub Actions. Tidak ada riwayat git dari proyek asal dalam ZIP.
+Windows. Status dan log pengujian aktual tersedia pada tab Actions repository. Tidak ada riwayat git dari proyek asal dalam ZIP.
 
 ## Installer EXE
 

@@ -1,6 +1,6 @@
 # Publication validation — 2026-10-27
 
-This report records checks rerun while preparing the supplied AiBo 4.3.3 package for GitHub publication. Bot/installer implementation files were not changed. Repository-facing documentation and issue templates were prepared for the independent fork.
+This report records checks rerun while preparing the supplied AiBo 4.3.3 package for GitHub publication. Two zero-valued navigation priority-queue seeds were made explicitly float (`0.0f`) for strict MSVC compilation; their values and intended behavior are unchanged. Installer implementation and shipped binaries were not changed. Repository-facing documentation and issue templates were prepared for the independent fork.
 
 | Check | Result |
 | --- | --- |

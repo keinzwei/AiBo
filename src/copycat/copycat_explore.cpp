@@ -1,4 +1,5 @@
 // Geometry-discovered navigation overlay. GPL-2.0-or-later.
+// 2026-10-27: explicit float queue seed for strict MSVC builds.
 #include "copycat_explore.h"
 #include <algorithm>
 #include <cmath>
@@ -85,7 +86,7 @@ ExplorePlan ExploreMap::plan (const Vec &foot, unsigned team, unsigned slot, uin
   const size_t count = nodes_.size (); std::vector<float> costs (count, std::numeric_limits<float>::infinity ());
   std::vector<int> parent (count, -1); using Entry = std::pair<float,uint16_t>;
   std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> open;
-  costs[start] = 0; open.push ({0, static_cast<uint16_t> (start)});
+  costs[start] = 0; open.push ({0.0f, static_cast<uint16_t> (start)});
   int best = -1, fallback = -1; float highest = -1e30f, fallback_score = -1e30f;
   while (!open.empty () && result.examined < std::min (budget, static_cast<unsigned> (MaxNodes))) {
     const auto [cost, n] = open.top (); open.pop (); if (cost > costs[n]) continue; ++result.examined;
