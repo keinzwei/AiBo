@@ -1,0 +1,62 @@
+name: Import AiBo 4.3.3 source
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - name: Download prepared source from the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release download v4.3.3 --pattern AiBo-4.3.3-Source.zip --dir "$RUNNER_TEMP/aibo-import"
+      - name: Verify, import and commit the source snapshot
+        env:
+          ARCHIVE_PATH: ${{ runner.temp }}/aibo-import/AiBo-4.3.3-Source.zip
+        run: |
+          python3 - <<'PYTHON'
+          import hashlib, os, pathlib, subprocess, zipfile
+          archive = pathlib.Path(os.environ["ARCHIVE_PATH"])
+          expected = "82a73fca759386a09f822738c85d4c8d4f1ddadc83ea16d6b1a5b696c548d5eb"
+          assert hashlib.sha256(archive.read_bytes()).hexdigest() == expected, "Archive checksum mismatch"
+          root = pathlib.Path.cwd()
+          imported = []
+          with zipfile.ZipFile(archive) as z:
+              files = [i for i in z.infolist() if not i.is_dir()]
+              assert len(files) == 4455, "Unexpected source file count"
+              for info in files:
+                  path = pathlib.PurePosixPath(info.filename)
+                  assert not path.is_absolute() and ".." not in path.parts
+                  assert path.parts[0] == "AiBo-4.3.3-Source" and len(path.parts) > 1
+                  rel = pathlib.PurePosixPath(*path.parts[1:])
+                  assert ".git" not in rel.parts and info.file_size < 16000000
+                  if rel.parts[:2] == (".github", "workflows"):
+                      continue
+                  target = root / rel
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(z.read(info))
+                  imported.append(str(rel))
+          subprocess.run(["git", "add", "--force", "--"] + imported, check=True)
+          index = subprocess.check_output(["git", "ls-files", "--stage", "-z"]).split(b"\0")
+          indexed = {}
+          for entry in index:
+              if entry:
+                  meta, name = entry.split(b"\t", 1)
+                  indexed[name.decode()] = meta.split()[1].decode()
+          for rel in imported:
+              data = (root / rel).read_bytes()
+              sha = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
+              assert indexed[rel] == sha, "Git changed file bytes: " + rel
+          subprocess.run(["git", "config", "user.name", "github-actions[bot]"], check=True)
+          subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], check=True)
+          if subprocess.run(["git", "diff", "--cached", "--quiet"]).returncode:
+              subprocess.run(["git", "commit", "--quiet", "-m", "Import verified AiBo 4.3.3 source snapshot"], check=True)
+              subprocess.run(["git", "push", "origin", "HEAD:main"], check=True)
+          print("Imported and byte-verified", len(imported), "source files")
+          PYTHON
