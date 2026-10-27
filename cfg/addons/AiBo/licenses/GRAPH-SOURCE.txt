@@ -1,0 +1,4 @@
+Original unmodified de_dust2.graph by $_Vladislav from https://github.com/yapb/graph (graph/de_dust2.graph).
+Retrieved 2026-10-26. SHA256: 215f7fa0a08c55c95ad68a74d4c17f92960960fab4315598db84482e65a49a18
+Licensed CC BY-SA 4.0; full license and original graph-author credits supplied alongside.
+1238 native nodes; no BSP or game assets included. Installed only if no existing Dust2 graph exists.

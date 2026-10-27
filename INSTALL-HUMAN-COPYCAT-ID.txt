@@ -1,0 +1,39 @@
+# AiBo FINAL 4.3.3 — Artificial Intelligence Bot
+
+Ekstrak ZIP, tutup CS/HLDS, lalu jalankan **AiBo-4.3.3-Setup.exe** di folder utama.
+Pilih folder Counter Strike atau cstrike. Installer memeriksa game saat melanjutkan
+halaman pilihan folder. Tidak memerlukan batch, CMD atau PowerShell.
+
+CT kini menyisir Tunnel, T-Spawn dan Pit pada Dust2 untuk memburu musuh. Sebagian
+CT menjaga objective; kontak musuh dan bom menghentikan pencarian daerah.
+42 profil mengutamakan senjata sesuai peran dan memiliki bobot kemampuan dari
+peringkat tahunan HLTV. NEO/f0rest memakai rifle; GuardiaN/kennyS spesialis AWP.
+
+Default batas HUMAN AIM, aim skill dan reaction skill = 100. Level individual
+dibobot menurut profil; kill tetap melalui peluru dan aturan game. Untuk mode
+adaptif gunakan `aibo_human_aim_level -1`.
+
+File lama yang diganti dipindahkan ke `.bak` terlebih dahulu. Cadangan sebelumnya
+tetap ada dengan penomoran `.bak.1`, dan seterusnya. Dua file unggahan autobuy.txt
+dan listenserver.cfg disertakan persis. Jangan menyalin install/ secara manual
+bila menginginkan prosedur backup dan penggabungan plugins.ini dari installer.
+
+DLL: `cstrike/addons/AiBo/bin/AiBo.dll`.
+Metamod: `win32 addons/AiBo/bin/AiBo.dll`.
+Console: `aibo version`, `aibo_human_aim_status`, `aibo_final_status`.
+
+Baca RELEASE-4.3.3-ID.md untuk perubahan, PRO-PROFILES-4.3.3-ID.md untuk 42 profil
+dan sumber HLTV, HUMAN-AIM-4.3.3-ID.md untuk teknik, serta VALIDATION.md untuk tes.
+Source lengkap: source/. Cara build: source/docs/human-copycat/BUILD.md.
+Data GRAPH/pembelajaran lama dimigrasikan dengan menyalin bila tujuan belum ada;
+GRAPH yang sudah terpasang dipertahankan. Fallback Dust2 disertakan dengan lisensinya.
+
+Kuota maksimum 31 bot membutuhkan server 32 slot untuk satu pemain manusia.
+Boost fisik membutuhkan collision antarpemain; konfigurasi Semiclip harus mengizinkannya.
+Chat tetap generatif prosedural lokal dalam 16 bahasa profil, tanpa LLM/API eksternal.
+
+293/293 tes kode dan 11/11 skenario installer lulus pada host Linux. DLL dan installer
+Windows x86 telah dibangun. UI Windows, process lock dan pertandingan CS 1.6 asli
+belum dijalankan di lingkungan ini. Tidak ada benchmark melawan pro player asli.
+Source ini hanya berisi rilis aktif. Histori rilis, patch lama dan artefak build tidak disertakan.
+Atribusi penulis dan lisensi dependensi tetap dipertahankan.

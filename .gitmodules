@@ -1,0 +1,8 @@
+[submodule "ext/linkage"]
+	path = ext/linkage
+	url = https://github.com/yapb/linkage
+	branch = master
+[submodule "ext/ystl"]
+	path = ext/ystl
+	url = https://github.com/yapb/ystl.git
+	branch = master

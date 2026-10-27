@@ -1,0 +1,11 @@
+# Auto detect text files and perform LF normalization
+* text=auto eol=lf
+
+# Custom for Visual Studio
+*.sln     merge=union
+*.vcxproj merge=union
+
+
+# These installer inputs are verified by their exact original checksums.
+/cfg/autobuy.txt -text
+/cfg/listenserver.cfg -text

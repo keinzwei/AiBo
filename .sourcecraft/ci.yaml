@@ -1,0 +1,326 @@
+on:
+  push:
+    - workflows: [build]
+      filter:
+        branches: [master, main, dev, sourcecraft-ci]
+        paths: ["**", "!**.md"]
+    - workflows: [release-continuous]
+      filter:
+        branches: [master]
+        paths: ["**", "!**.md"]
+    - workflows: [release]
+      filter:
+        tags: ["**"]
+  pull_request:
+    - workflows: [build]
+      filter:
+        target_branches: [master, main, dev, sourcecraft-ci]
+        paths: ["**", "!**.md"]
+
+workflows:
+  build:
+    settings:
+      max_cube_duration: 20m
+    tasks:
+      - name: unit-tests
+        uses: unit-tests
+      - name: amxx-include
+        uses: amxx-include
+      - name: linux-x86
+        uses: cross-build
+        env: { ARCH: linux-x86 }
+      - name: linux-amd64
+        uses: cross-build
+        env: { ARCH: linux-amd64 }
+      - name: linux-x86-nosimd
+        uses: cross-build
+        env: { ARCH: linux-x86-nosimd }
+      - name: linux-arm64
+        uses: cross-build
+        env: { ARCH: linux-arm64 }
+      - name: linux-riscv64
+        uses: cross-build
+        env: { ARCH: linux-riscv64 }
+      - name: apple-amd64
+        uses: cross-build
+        env: { ARCH: apple-amd64 }
+      - name: windows-x86-clang
+        uses: cross-build
+        env: { ARCH: windows-x86-clang }
+      - name: windows-amd64
+        uses: cross-build
+        env: { ARCH: windows-amd64 }
+
+  release:
+    settings:
+      max_cube_duration: 60m
+    tasks:
+      - name: release
+        uses: make-release
+
+  release-continuous:
+    settings:
+      max_cube_duration: 60m
+    tasks:
+      - name: release
+        uses: make-release
+
+tasks:
+  - name: amxx-include
+    cubes:
+      - name: submodules
+        script:
+          - git submodule update --init --recursive
+      - name: check
+        script:
+          - python3 tools/gen_amxx_inc.py --check
+
+  - name: cross-build
+    cubes:
+      - name: submodules
+        script:
+          - git submodule update --init --recursive
+      - name: zig
+        env:
+          ZIG_VERSION: "0.17.0"
+        script:
+          - |
+            set -e
+            ZIG_DIR="$HOME/.local/zig"
+            mkdir -p "$ZIG_DIR"
+            rm -rf "$ZIG_DIR"/*
+            curl -fsSL --retry 3 -o /tmp/zig.tar.xz \
+              "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz"
+            tar -xJf /tmp/zig.tar.xz -C "$ZIG_DIR" --strip-components=1
+            echo "PATH=$ZIG_DIR:$PATH" >> "$SOURCECRAFT_ENV"
+            "$ZIG_DIR/zig" version
+      - name: cmake
+        script:
+          - |
+            set -e
+            ver=$(cmake --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
+            if [ -z "$ver" ] || [ "$(printf '%s\n3.25\n' "$ver" | sort -V | head -1)" != "3.25" ]; then
+              python3 -m pip install --user --upgrade cmake ninja
+              echo "PATH=$HOME/.local/bin:$PATH" >> "$SOURCECRAFT_ENV"
+              export PATH="$HOME/.local/bin:$PATH"
+            fi
+            cmake --version
+      - name: configure
+        script:
+          - cmake --preset "ci-$ARCH"
+      - name: build
+        script:
+          - cmake --build --preset "ci-$ARCH"
+      - name: check-dll-abi
+        if: contains(env.ARCH, "windows-")
+        script:
+          - |
+            set -e
+            dll=$(find "build/ci-$ARCH" -maxdepth 1 -type f -name 'aibo*.dll' ! -name '*amxx*' | head -1)
+            if [ -z "$dll" ]; then
+              echo "No AIBO DLL found in build/ci-$ARCH"
+              exit 1
+            fi
+            arch=i386
+            if [[ "$ARCH" == *amd64* ]]; then
+              arch=amd64
+            fi
+            echo "Checking DLL ABI: $dll ($arch)"
+            python3 tools/check_dll.py "$dll" --arch "$arch"
+      - name: check-abi
+        if: env.ARCH == "linux-x86" || env.ARCH == "linux-x86-nosimd"
+        script:
+          - |
+            set -e
+            so=$(find "build/ci-$ARCH" -maxdepth 1 -type f -name 'aibo*.so' ! -name '*amxx*' | head -1)
+            if [ -z "$so" ]; then
+              echo "No AIBO shared library found in build/ci-$ARCH"
+              exit 1
+            fi
+            echo "Checking ABI: $so (i386, max glibc 2.17)"
+            python3 tools/check_abi.py "$so" --arch i386 --max-glibc 2.17
+      - name: check-abi-cross
+        if: contains(env.ARCH, "linux-") && env.ARCH != "linux-x86" && env.ARCH != "linux-x86-nosimd"
+        script:
+          - |
+            set -e
+            so=$(find "build/ci-$ARCH" -maxdepth 1 -type f -name 'aibo*.so' ! -name '*amxx*' | head -1)
+            if [ -z "$so" ]; then
+              echo "No AIBO shared library found in build/ci-$ARCH"
+              exit 1
+            fi
+            case "$ARCH" in
+              linux-amd64) arch=amd64 ;;
+              linux-arm64) arch=arm64 ;;
+              linux-riscv64) arch=riscv64 ;;
+            esac
+            if [ "$ARCH" = "linux-riscv64" ]; then limit=2.27; else limit=2.17; fi
+            python3 tools/check_abi.py "$so" --arch "$arch" --max-glibc "$limit"
+      - name: collect
+        script:
+          - |
+            set -e
+            mkdir -p artifacts
+            find "build/ci-$ARCH" -maxdepth 1 -type f \
+              \( -name 'aibo*.so' -o -name 'aibo*.dll' -o -name 'aibo*.dylib' \) \
+              -exec cp {} artifacts/ \;
+            if ! find artifacts -type f -print -quit | grep -q .; then
+              echo "No build artifacts found"
+              exit 1
+            fi
+            tar -czf aibo-artifacts.tar.gz -C artifacts .
+            ls -la aibo-artifacts.tar.gz
+        artifacts:
+          paths:
+            - aibo-artifacts.tar.gz
+
+  - name: unit-tests
+    cubes:
+      - name: submodules
+        script:
+          - git submodule update --init --recursive
+      - name: cmake
+        script:
+          - |
+            set -e
+            ver=$(cmake --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
+            if [ -z "$ver" ] || [ "$(printf '%s\n3.25\n' "$ver" | sort -V | head -1)" != "3.25" ]; then
+              python3 -m pip install --user --upgrade cmake ninja
+              echo "PATH=$HOME/.local/bin:$PATH" >> "$SOURCECRAFT_ENV"
+              export PATH="$HOME/.local/bin:$PATH"
+            fi
+            cmake --version
+      - name: zig
+        env:
+          ZIG_VERSION: "0.17.0"
+        script:
+          - |
+            set -e
+            ZIG_DIR="$HOME/.local/zig"
+            mkdir -p "$ZIG_DIR"
+            rm -rf "$ZIG_DIR"/*
+            curl -fsSL --retry 3 -o /tmp/zig.tar.xz \
+              "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz"
+            tar -xJf /tmp/zig.tar.xz -C "$ZIG_DIR" --strip-components=1
+            echo "PATH=$ZIG_DIR:$PATH" >> "$SOURCECRAFT_ENV"
+            "$ZIG_DIR/zig" version
+      - name: compiler
+        script:
+          - |
+            set -e
+            mkdir -p "$HOME/.local/bin"
+            printf '#!/bin/sh\nexec zig cc -target x86_64-linux-gnu.2.17 "$@"\n' > "$HOME/.local/bin/zig-cc"
+            printf '#!/bin/sh\nexec zig c++ -target x86_64-linux-gnu.2.17 "$@"\n' > "$HOME/.local/bin/zig-c++"
+            chmod +x "$HOME/.local/bin/zig-cc" "$HOME/.local/bin/zig-c++"
+            echo "PATH=$HOME/.local/bin:$PATH" >> "$SOURCECRAFT_ENV"
+            echo "CC=$HOME/.local/bin/zig-cc" >> "$SOURCECRAFT_ENV"
+            echo "CXX=$HOME/.local/bin/zig-c++" >> "$SOURCECRAFT_ENV"
+      - name: test
+        script:
+          - cmake --preset linux-tests
+          - cmake --build --preset linux-tests
+          - ctest --test-dir build/linux-tests --output-on-failure
+
+  - name: make-release
+    env:
+      CS_CERTIFICATE: ${{ secrets.CS_CERTIFICATE }}
+      CS_CERTIFICATE_PASSWORD: ${{ secrets.CS_CERTIFICATE_PASSWORD }}
+      GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+    cubes:
+      - name: submodules
+        script:
+          - git submodule update --init --recursive
+      - name: zig
+        env:
+          ZIG_VERSION: "0.17.0"
+        script:
+          - |
+            set -e
+            ZIG_DIR="$HOME/.local/zig"
+            mkdir -p "$ZIG_DIR"
+            rm -rf "$ZIG_DIR"/*
+            curl -fsSL --retry 3 -o /tmp/zig.tar.xz \
+              "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz"
+            tar -xJf /tmp/zig.tar.xz -C "$ZIG_DIR" --strip-components=1
+            echo "PATH=$ZIG_DIR:$PATH" >> "$SOURCECRAFT_ENV"
+            "$ZIG_DIR/zig" version
+      - name: cmake
+        script:
+          - |
+            set -e
+            ver=$(cmake --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
+            if [ -z "$ver" ] || [ "$(printf '%s\n3.25\n' "$ver" | sort -V | head -1)" != "3.25" ]; then
+              python3 -m pip install --user --upgrade cmake ninja
+              echo "PATH=$HOME/.local/bin:$PATH" >> "$SOURCECRAFT_ENV"
+              export PATH="$HOME/.local/bin:$PATH"
+            fi
+            cmake --version
+      - name: build-all
+        script:
+          - |
+            set -e
+            for a in linux-x86 linux-amd64 linux-x86-nosimd linux-arm64 linux-riscv64 apple-amd64 windows-x86-clang windows-amd64; do
+              cmake --preset "ci-$a"
+              cmake --build --preset "ci-$a"
+              mkdir -p "artifacts/$a"
+              find "build/ci-$a" -maxdepth 1 -type f \( -name 'aibo*.so' -o -name 'aibo*.dll' -o -name 'aibo*.dylib' \) -exec cp {} "artifacts/$a/" \;
+            done
+      - name: dependencies
+        script:
+          - |
+            set -e
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends osslsigncode
+      - name: python
+        script:
+          - |
+            set -e
+            python3 -m pip install --user --upgrade requests cmake ninja
+            echo "PATH=$HOME/.local/bin:$PATH" >> "$SOURCECRAFT_ENV"
+            export PATH="$HOME/.local/bin:$PATH"
+            cmake --version
+      - name: package
+        script:
+          - |
+            set -e
+            cmake --preset dist
+            cmake --build --preset dist --target package
+            tar -czf aibo-pkg.tar.gz -C pkg .
+            ls -la aibo-pkg.tar.gz
+        artifacts:
+          paths:
+            - aibo-pkg.tar.gz
+      - name: publish
+        script:
+          - |
+            set -e
+            case "$SOURCECRAFT_COMMIT_REF_NAME" in
+              master|main) TAG="continuous" ;;
+              *) TAG="$SOURCECRAFT_COMMIT_REF_NAME" ;;
+            esac
+            REPO="$(echo "$SOURCECRAFT_REPO_URL" | sed -e 's|.*git.sourcecraft.dev/||' -e 's|\.git$||')"
+            API="https://api.sourcecraft.tech/repos/$REPO/releases"
+            if git describe --tags --abbrev=0 >/dev/null 2>&1; then
+              base=$(git describe --tags --abbrev=0)
+              rev_range="$base..HEAD"
+            else
+              base="unreleased"
+              rev_range="HEAD~20..HEAD"
+            fi
+            notes=$(python3 tools/gen_release_notes.py --range "$rev_range" --since "$base" --fingerprint FC03F18A5E7DCE282A4B9D48194F2DA6C5F2FA24)
+            [ -n "$notes" ] || notes="Rolling build from master."
+            payload=$(python3 -c 'import json,sys; print(json.dumps({"tag":sys.argv[1],"title":sys.argv[1],"release_notes":sys.argv[2],"publish":True}))' "$TAG" "$notes")
+            echo "Publishing $REPO@$TAG"
+            curl -fsSL -X DELETE "$API/tag/$TAG" \
+              -H "Authorization: Bearer $SOURCECRAFT_TOKEN" > /dev/null 2>&1 || echo "no previous release, fresh publish"
+            curl -fsSL -X POST "$API" \
+              -H "Authorization: Bearer $SOURCECRAFT_TOKEN" \
+              -H 'Content-Type: application/json' \
+              -d "$payload" > /dev/null
+            for f in pkg/*; do
+              [ -f "$f" ] || continue
+              echo "Uploading $(basename "$f")"
+              curl -fsSL -X POST "$API/tag/$TAG/attachments" \
+                -H "Authorization: Bearer $SOURCECRAFT_TOKEN" \
+                -F "name=$(basename "$f")" -F "file=@$f" > /dev/null
+            done

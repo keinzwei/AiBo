@@ -1,0 +1,52 @@
+{
+  "product": "AiBo",
+  "version": "4.3.3",
+  "date": "2026-10-26",
+  "code_tests": {
+    "passed": 293,
+    "failed": 0,
+    "host": "Linux x86_64 fake-engine and portable suites",
+    "real_graph": "unmodified upstream Dust2 1238 nodes, arrivals injected by test"
+  },
+  "installer_tests": {
+    "passed": 11,
+    "failed": 0,
+    "host": "native Linux build of the production transaction core"
+  },
+  "dll_contract": {
+    "architecture": "PE32 i386",
+    "exports": 10,
+    "imports": [
+      "bcrypt.dll",
+      "kernel32.dll",
+      "msvcrt.dll",
+      "ws2_32.dll"
+    ],
+    "version_resource": "4.3.3.1",
+    "sha256": "aae08c70422d6450acca71df7140fb9e19fd06c12b8a09c950951f435df42ab5"
+  },
+  "installer_sha256": "01774a217e4789b0a816c9e74082d4d755569ee6eb5f95fece90a8ef6a5781ca",
+  "plugins_ini_checked_before_makensis": true,
+  "active_win32_modules": [
+    "addons/amxmodx/dlls/amxmodx_mm.dll",
+    "addons/AiBo/bin/AiBo.dll"
+  ],
+  "source_clean": {
+    "old_release_history": false,
+    "old_implementation_snapshot": false,
+    "build_outputs_distributed_in_source": false,
+    "git_metadata": false,
+    "synthetic_regression_fixture": true,
+    "licenses_preserved": true
+  },
+  "uploaded_config_sha256": {
+    "autobuy.txt": "567b58586f6969da91d5d272d3217ff5b66ddede05c70773970ca80a9c0e6160",
+    "listenserver.cfg": "de3a309511aa8b0a26cbdc1b9b9041e9d7216da7e1b97c396b097e4359254cb6"
+  },
+  "not_executed": [
+    "Windows installer GUI and process-lock paths",
+    "actual CS 1.6 match and Dust2 BSP movement physics",
+    "actual pro-player benchmark",
+    "GitHub Actions remote workflow"
+  ]
+}

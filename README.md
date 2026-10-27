@@ -2,6 +2,8 @@
 
 **Human-inspired Counter-Strike 1.6 bots, built on YaPB and extended with local learning.**
 
+**AiBo creator and project maintainer: K9_einzwei** (GitHub: [keinzwei](https://github.com/keinzwei)).
+
 [![Version](https://img.shields.io/badge/version-4.3.3-blue)](https://github.com/keinzwei/AiBo/releases/tag/v4.3.3)
 [![Platform](https://img.shields.io/badge/release-Windows%20x86-0078D4)](https://github.com/keinzwei/AiBo/releases)
 [![License](https://img.shields.io/badge/license-GPL--2.0--or--later-green)](LICENSE)
@@ -116,7 +118,7 @@ Routes must be physically reachable; geometry checks do not guarantee every map 
 
 ## Credits and license
 
-Published by [keinzwei](https://github.com/keinzwei). AiBo builds on **YaPB, jeefo and the YaPB contributors**, with **PODBot / Count Floyd** ancestry and the supplied **RealBot Human Copycat** extension. Graph authors and all dependency/runtime contributors retain their credits.
+Created and maintained by **K9_einzwei** (GitHub: [keinzwei](https://github.com/keinzwei)). AiBo builds on **YaPB, jeefo and the YaPB contributors**, with **PODBot / Count Floyd** ancestry and the supplied **RealBot Human Copycat** extension. Graph authors and all dependency/runtime contributors retain their credits.
 
 The combined fork is **GPL-2.0-or-later**, as declared by the supplied notices. Components retain their own terms. Read [LICENSE](LICENSE), [NOTICE-AiBo.md](NOTICE-AiBo.md), [CREDITS.md](CREDITS.md) and notices under `ext/` and `cfg/addons/AiBo/licenses/`.
 

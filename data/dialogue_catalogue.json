@@ -1,0 +1,2402 @@
+{
+  "en": {
+    "prefix": [
+      "okay",
+      "well",
+      "honestly",
+      "team",
+      "alright",
+      "yeah"
+    ],
+    "tail": [
+      "one angle at a time",
+      "let us keep some spacing",
+      "timing matters here",
+      "we can adjust next round",
+      "no need to rush",
+      "keep an eye on the clock"
+    ],
+    "empty": [
+      "I have no grenades left",
+      "my utility is already used",
+      "no utility in my inventory"
+    ],
+    "body": [
+      [
+        "hello everyone",
+        "hey team, good luck",
+        "hello, ready for this round"
+      ],
+      [
+        "nice work on that play",
+        "that timing was clean",
+        "well played, team"
+      ],
+      [
+        "my bad, I mistimed that",
+        "sorry about the mistake",
+        "I need to be more careful"
+      ],
+      [
+        "I still have {utility}",
+        "my available utility is {utility}",
+        "I am carrying {utility}"
+      ],
+      [
+        "my balance is ${cash}",
+        "I have ${cash} for this buy",
+        "my current budget is ${cash}"
+      ],
+      [
+        "I am using {weapon}",
+        "my weapon is {weapon}",
+        "I currently have {weapon}"
+      ],
+      [
+        "that duel was close",
+        "I got through that fight",
+        "I need to reset after that duel"
+      ],
+      [
+        "I lost that duel",
+        "I mistimed that peek",
+        "next round I will try a different pace"
+      ],
+      [
+        "the bomb is planted",
+        "the bomb timer is running",
+        "we are in the post-plant now"
+      ],
+      [
+        "I am checking a different route",
+        "I am exploring a new approach",
+        "I am looking around this path"
+      ],
+      [
+        "we could change our rotation",
+        "another route might work",
+        "let us change the pace"
+      ],
+      [
+        "we should watch the angles",
+        "some spacing would help here",
+        "let us avoid peeking together"
+      ],
+      [
+        "what is our plan this round?",
+        "which approach do you prefer?",
+        "we can try a different setup"
+      ],
+      [
+        "I did not catch that",
+        "could you say that again?",
+        "what did you mean there?"
+      ],
+      [
+        "my crosshair placement needs work",
+        "I am trying to improve my timing",
+        "every round feels a little different"
+      ],
+      [
+        "I have {hp} HP left",
+        "my health is {hp} HP",
+        "I need to be careful with {hp} HP"
+      ],
+      [
+        "I am on top with {frags} frags, try to catch me",
+        "first place is mine for now, {frags} frags",
+        "leading the scoreboard, keep up if you can"
+      ],
+      [
+        "that last duel tilted me",
+        "I am frustrated, I need a clean reset",
+        "I am annoyed with that mistake"
+      ],
+      [
+        "I am nervous about this angle",
+        "that fight scared me a little",
+        "I do not like these odds"
+      ],
+      [
+        "I am feeling brave this round",
+        "I want to take a bigger risk",
+        "I am going for a bold play"
+      ],
+      [
+        "I will take this carefully",
+        "I need a more patient approach",
+        "I want to check each angle first"
+      ],
+      [
+        "I want the top spot on this scoreboard",
+        "rank {rank} is not enough for me",
+        "I am chasing the next frag"
+      ],
+      [
+        "let us try a teammate boost",
+        "I could use a lift onto this ledge",
+        "we can help each other up"
+      ]
+    ],
+    "ack": [
+      "no worries, we can reset",
+      "all good, keep going",
+      "it happens, focus on the next play"
+    ],
+    "plan": [
+      "we could spread out and regroup",
+      "I would try a slower approach",
+      "let us change routes this round"
+    ]
+  },
+  "id": {
+    "prefix": [
+      "oke",
+      "hmm",
+      "teman-teman",
+      "sip",
+      "ya",
+      "jujur"
+    ],
+    "tail": [
+      "jaga jarak antar pemain",
+      "satu sudut dulu",
+      "timing tetap penting",
+      "jangan terlalu buru-buru",
+      "lihat waktu ronde",
+      "kita bisa ubah tempo"
+    ],
+    "empty": [
+      "granatku sudah habis",
+      "aku tidak punya utility",
+      "utility di inventarisku kosong"
+    ],
+    "body": [
+      [
+        "halo semuanya",
+        "hai tim, semoga seru",
+        "halo, siap ronde ini?"
+      ],
+      [
+        "tadi mainnya bagus",
+        "timing itu rapi",
+        "mantap, tim"
+      ],
+      [
+        "maaf, tadi salah timing",
+        "salahku, kurang hati-hati",
+        "maaf atas kesalahan tadi"
+      ],
+      [
+        "aku masih bawa {utility}",
+        "utility yang tersedia {utility}",
+        "aku punya {utility}"
+      ],
+      [
+        "uangku sekarang ${cash}",
+        "budget beliku ${cash}",
+        "saldo saat ini ${cash}"
+      ],
+      [
+        "aku sedang memakai {weapon}",
+        "senjataku sekarang {weapon}",
+        "aku bawa {weapon}"
+      ],
+      [
+        "duel tadi mepet sekali",
+        "akhirnya lolos dari duel itu",
+        "habis duel tadi harus fokus lagi"
+      ],
+      [
+        "aku kalah duel tadi",
+        "peek tadi salah timing",
+        "ronde berikutnya coba tempo lain"
+      ],
+      [
+        "bom sudah terpasang",
+        "timer bom sedang berjalan",
+        "sekarang fase setelah plant"
+      ],
+      [
+        "aku sedang mencari jalur baru",
+        "aku sedang memeriksa rute lain",
+        "aku lagi menjelajahi area ini"
+      ],
+      [
+        "kita bisa ganti arah rotasi",
+        "jalur lain mungkin lebih cocok",
+        "coba ubah tempo rotasi"
+      ],
+      [
+        "sebaiknya periksa tiap sudut",
+        "jangan berdiri terlalu rapat",
+        "jangan peek bersamaan"
+      ],
+      [
+        "rencana ronde ini bagaimana?",
+        "mau coba pendekatan yang mana?",
+        "kita bisa coba susunan berbeda"
+      ],
+      [
+        "aku belum nangkep maksudnya",
+        "bisa ulang sebentar?",
+        "yang dimaksud tadi apa?"
+      ],
+      [
+        "penempatan crosshair-ku perlu latihan",
+        "aku lagi memperbaiki timing",
+        "setiap ronde situasinya beda"
+      ],
+      [
+        "HP-ku tinggal {hp}",
+        "kesehatanku sekarang {hp} HP",
+        "harus hati-hati dengan {hp} HP"
+      ],
+      [
+        "aku paling atas dengan {frags} frag, coba kejar",
+        "peringkat pertama punyaku dulu, {frags} frag",
+        "aku memimpin skor, ayo kalau bisa susul"
+      ],
+      [
+        "duel tadi bikin kesal",
+        "aku lagi jengkel, harus atur ulang fokus",
+        "aku marah karena kesalahan tadi"
+      ],
+      [
+        "aku agak takut di sudut ini",
+        "duel tadi bikin deg-degan",
+        "peluang ini kurang enak buatku"
+      ],
+      [
+        "ronde ini aku berani ambil risiko",
+        "aku mau coba langkah lebih nekat",
+        "aku ingin main lebih berani"
+      ],
+      [
+        "aku akan lebih hati-hati",
+        "aku perlu pendekatan lebih sabar",
+        "aku ingin periksa setiap sudut dulu"
+      ],
+      [
+        "aku ingin jadi pemimpin skor",
+        "peringkat {rank} belum cukup buatku",
+        "aku lagi mengejar frag berikutnya"
+      ],
+      [
+        "ayo coba boost dengan rekan",
+        "aku perlu bantuan naik ke tepi ini",
+        "kita bisa bantu naik bergantian"
+      ]
+    ],
+    "ack": [
+      "santai, kita bisa mulai lagi",
+      "gapapa, lanjut saja",
+      "biasa terjadi, fokus berikutnya"
+    ],
+    "plan": [
+      "kita bisa menyebar lalu berkumpul lagi",
+      "aku ingin coba pendekatan lebih pelan",
+      "ronde ini coba jalur berbeda"
+    ]
+  },
+  "sv": {
+    "prefix": [
+      "okej",
+      "hörni",
+      "laget",
+      "jo",
+      "alltså",
+      "nåväl"
+    ],
+    "tail": [
+      "ta en vinkel i taget",
+      "håll lite avstånd",
+      "tajmingen är viktig",
+      "vi kan ändra nästa runda",
+      "ingen brådska",
+      "håll koll på tiden"
+    ],
+    "empty": [
+      "jag har inga granater kvar",
+      "min utility är slut",
+      "inga granater i mitt inventarium"
+    ],
+    "body": [
+      [
+        "hej allihop",
+        "tjena laget, lycka till",
+        "hej, redo för rundan?"
+      ],
+      [
+        "snyggt spelat",
+        "den tajmingen var riktigt bra",
+        "bra jobbat, laget"
+      ],
+      [
+        "mitt fel, dålig tajming",
+        "förlåt för misstaget",
+        "jag måste vara försiktigare"
+      ],
+      [
+        "jag har fortfarande {utility}",
+        "min utility är {utility}",
+        "jag bär på {utility}"
+      ],
+      [
+        "jag har ${cash}",
+        "min budget är ${cash}",
+        "jag kan köpa för ${cash}"
+      ],
+      [
+        "jag använder {weapon}",
+        "mitt vapen är {weapon}",
+        "jag har {weapon} just nu"
+      ],
+      [
+        "den duellen var nära",
+        "jag klarade den striden",
+        "måste hitta fokus efter duellen"
+      ],
+      [
+        "jag förlorade duellen",
+        "jag peekade vid fel tillfälle",
+        "nästa runda provar jag ett annat tempo"
+      ],
+      [
+        "bomben är planterad",
+        "bombens timer går",
+        "nu spelar vi efter plant"
+      ],
+      [
+        "jag kollar en annan väg",
+        "jag utforskar en ny passage",
+        "jag undersöker den här vägen"
+      ],
+      [
+        "vi kan ändra rotationen",
+        "en annan väg kanske funkar",
+        "vi kan byta tempo"
+      ],
+      [
+        "vi borde bevaka vinklarna",
+        "lite mer avstånd vore bra",
+        "peeka inte samtidigt"
+      ],
+      [
+        "vad är planen den här rundan?",
+        "vilken väg föredrar ni?",
+        "vi kan prova en annan uppställning"
+      ],
+      [
+        "jag uppfattade inte det",
+        "kan du säga det igen?",
+        "vad menade du?"
+      ],
+      [
+        "min crosshairplacering behöver jobb",
+        "jag försöker förbättra tajmingen",
+        "varje runda känns annorlunda"
+      ],
+      [
+        "jag har {hp} HP kvar",
+        "min hälsa är {hp} HP",
+        "måste vara försiktig med {hp} HP"
+      ],
+      [
+        "jag leder med {frags} frags, försök hinna ikapp",
+        "förstaplatsen är min just nu, {frags} frags",
+        "jag toppar listan, häng med om ni kan"
+      ],
+      [
+        "den duellen gjorde mig irriterad",
+        "jag är frustrerad och behöver samla mig",
+        "det där misstaget stör mig"
+      ],
+      [
+        "jag är nervös vid den här vinkeln",
+        "den striden skrämde mig lite",
+        "jag gillar inte de här oddsen"
+      ],
+      [
+        "jag känner mig modig den här rundan",
+        "jag vill ta en större risk",
+        "jag tänker prova ett djärvt spel"
+      ],
+      [
+        "jag tar det försiktigt",
+        "jag behöver ett tålmodigare tempo",
+        "jag vill kontrollera varje vinkel först"
+      ],
+      [
+        "jag vill ha förstaplatsen",
+        "plats {rank} räcker inte för mig",
+        "jag jagar nästa frag"
+      ],
+      [
+        "vi kan prova en lagkamratsboost",
+        "jag behöver hjälp upp på kanten",
+        "vi kan hjälpa varandra upp"
+      ]
+    ],
+    "ack": [
+      "ingen fara, vi tar nya tag",
+      "det är lugnt, fortsätt",
+      "sånt händer, fokusera på nästa spel"
+    ],
+    "plan": [
+      "vi kan sprida ut oss och samlas igen",
+      "jag skulle prova ett långsammare tempo",
+      "vi byter väg den här rundan"
+    ]
+  },
+  "da": {
+    "prefix": [
+      "okay",
+      "holdet",
+      "altså",
+      "jo",
+      "hør her",
+      "nå"
+    ],
+    "tail": [
+      "en vinkel ad gangen",
+      "hold lidt afstand",
+      "timingen er vigtig",
+      "vi kan ændre næste runde",
+      "ingen grund til at skynde sig",
+      "hold øje med tiden"
+    ],
+    "empty": [
+      "jeg har ingen granater tilbage",
+      "min utility er brugt",
+      "ingen granater i mit udstyr"
+    ],
+    "body": [
+      [
+        "hej allesammen",
+        "hej hold, held og lykke",
+        "hej, klar til runden?"
+      ],
+      [
+        "flot spillet",
+        "den timing var god",
+        "godt arbejde, hold"
+      ],
+      [
+        "min fejl, dårlig timing",
+        "undskyld for fejlen",
+        "jeg må være mere forsigtig"
+      ],
+      [
+        "jeg har stadig {utility}",
+        "min utility er {utility}",
+        "jeg har {utility} med"
+      ],
+      [
+        "jeg har ${cash}",
+        "mit budget er ${cash}",
+        "jeg kan købe for ${cash}"
+      ],
+      [
+        "jeg bruger {weapon}",
+        "mit våben er {weapon}",
+        "jeg har {weapon} lige nu"
+      ],
+      [
+        "den duel var tæt",
+        "jeg klarede den kamp",
+        "jeg skal finde fokus efter duellen"
+      ],
+      [
+        "jeg tabte den duel",
+        "jeg peekede på det forkerte tidspunkt",
+        "næste runde prøver jeg et andet tempo"
+      ],
+      [
+        "bomben er plantet",
+        "bombens timer kører",
+        "nu spiller vi efter plant"
+      ],
+      [
+        "jeg undersøger en anden vej",
+        "jeg udforsker en ny passage",
+        "jeg kigger på den her rute"
+      ],
+      [
+        "vi kan ændre rotationen",
+        "en anden vej kan måske fungere",
+        "vi kan skifte tempo"
+      ],
+      [
+        "vi bør holde øje med vinklerne",
+        "lidt mere afstand ville hjælpe",
+        "lad være med at peeke samtidig"
+      ],
+      [
+        "hvad er planen denne runde?",
+        "hvilken vej foretrækker I?",
+        "vi kan prøve en anden opstilling"
+      ],
+      [
+        "jeg fangede ikke det",
+        "kan du sige det igen?",
+        "hvad mente du?"
+      ],
+      [
+        "min crosshairplacering skal forbedres",
+        "jeg arbejder på min timing",
+        "hver runde føles forskellig"
+      ],
+      [
+        "jeg har {hp} HP tilbage",
+        "mit helbred er {hp} HP",
+        "jeg må passe på med {hp} HP"
+      ],
+      [
+        "jeg fører med {frags} frags, prøv at indhente mig",
+        "førstepladsen er min lige nu, {frags} frags",
+        "jeg topper listen, følg med hvis I kan"
+      ],
+      [
+        "den duel gjorde mig irriteret",
+        "jeg er frustreret og må samle mig",
+        "den fejl irriterer mig"
+      ],
+      [
+        "jeg er nervøs ved den her vinkel",
+        "den kamp skræmte mig lidt",
+        "jeg kan ikke lide de her odds"
+      ],
+      [
+        "jeg føler mig modig denne runde",
+        "jeg vil tage en større risiko",
+        "jeg vil prøve et dristigt spil"
+      ],
+      [
+        "jeg tager det forsigtigt",
+        "jeg har brug for mere tålmodighed",
+        "jeg vil kontrollere vinklerne først"
+      ],
+      [
+        "jeg vil have førstepladsen",
+        "plads {rank} er ikke nok for mig",
+        "jeg jagter næste frag"
+      ],
+      [
+        "vi kan prøve et boost med en holdkammerat",
+        "jeg har brug for hjælp op på kanten",
+        "vi kan hjælpe hinanden op"
+      ]
+    ],
+    "ack": [
+      "ingen problemer, vi prøver igen",
+      "det er helt fint, fortsæt",
+      "det sker, fokus på det næste spil"
+    ],
+    "plan": [
+      "vi kan sprede os og samles igen",
+      "jeg ville prøve en langsommere tilgang",
+      "lad os skifte vej denne runde"
+    ]
+  },
+  "pl": {
+    "prefix": [
+      "dobra",
+      "ekipo",
+      "no cóż",
+      "jasne",
+      "słuchajcie",
+      "okej"
+    ],
+    "tail": [
+      "sprawdzajmy kąty po kolei",
+      "zachowajmy odstęp",
+      "liczy się wyczucie czasu",
+      "następną rundę można zmienić",
+      "bez pośpiechu",
+      "patrzmy na czas"
+    ],
+    "empty": [
+      "nie mam już granatów",
+      "moje granaty są zużyte",
+      "nie mam utility w ekwipunku"
+    ],
+    "body": [
+      [
+        "cześć wszystkim",
+        "siema ekipo, powodzenia",
+        "cześć, gotowi na rundę?"
+      ],
+      [
+        "ładnie zagrane",
+        "świetne wyczucie czasu",
+        "dobra robota, ekipo"
+      ],
+      [
+        "moja wina, zły moment",
+        "przepraszam za błąd",
+        "muszę bardziej uważać"
+      ],
+      [
+        "mam jeszcze {utility}",
+        "dostępne granaty to {utility}",
+        "niosę {utility}"
+      ],
+      [
+        "mam teraz ${cash}",
+        "mój budżet to ${cash}",
+        "mogę kupić za ${cash}"
+      ],
+      [
+        "gram teraz z {weapon}",
+        "moja broń to {weapon}",
+        "mam przy sobie {weapon}"
+      ],
+      [
+        "ten pojedynek był bliski",
+        "udało mi się przejść ten pojedynek",
+        "po tym pojedynku trzeba się skupić"
+      ],
+      [
+        "przegrałem ten pojedynek",
+        "wychyliłem się za wcześnie",
+        "w następnej rundzie zmienię tempo"
+      ],
+      [
+        "bomba jest podłożona",
+        "czas bomby już leci",
+        "jesteśmy po podłożeniu bomby"
+      ],
+      [
+        "sprawdzam inną drogę",
+        "odkrywam nowe przejście",
+        "rozglądam się po tej trasie"
+      ],
+      [
+        "możemy zmienić rotację",
+        "inna droga może zadziałać",
+        "spróbujmy innego tempa"
+      ],
+      [
+        "pilnujmy kątów",
+        "przyda się większy odstęp",
+        "nie wychylajmy się równocześnie"
+      ],
+      [
+        "jaki jest plan na tę rundę?",
+        "którą drogę wolicie?",
+        "możemy spróbować innego ustawienia"
+      ],
+      [
+        "nie zrozumiałem tego",
+        "możesz powtórzyć?",
+        "co miałeś na myśli?"
+      ],
+      [
+        "muszę poprawić ustawienie celownika",
+        "pracuję nad wyczuciem czasu",
+        "każda runda jest trochę inna"
+      ],
+      [
+        "mam jeszcze {hp} HP",
+        "moje zdrowie to {hp} HP",
+        "muszę uważać z {hp} HP"
+      ],
+      [
+        "prowadzę z {frags} fragami, spróbujcie mnie dogonić",
+        "pierwsze miejsce jest na razie moje, {frags} fragów",
+        "jestem na szczycie tabeli, nadążajcie"
+      ],
+      [
+        "ten pojedynek mnie zirytował",
+        "jestem sfrustrowany, muszę się uspokoić",
+        "złości mnie ten błąd"
+      ],
+      [
+        "trochę boję się tego kąta",
+        "ta walka trochę mnie przestraszyła",
+        "nie podobają mi się te szanse"
+      ],
+      [
+        "czuję się odważny w tej rundzie",
+        "chcę zaryzykować bardziej",
+        "spróbuję odważnego zagrania"
+      ],
+      [
+        "zagram ostrożnie",
+        "potrzebuję cierpliwszego podejścia",
+        "najpierw sprawdzę każdy kąt"
+      ],
+      [
+        "chcę pierwszego miejsca w tabeli",
+        "miejsce {rank} to dla mnie za mało",
+        "poluję na następnego fraga"
+      ],
+      [
+        "spróbujmy podsadzenia przez kolegę",
+        "potrzebuję pomocy na tej krawędzi",
+        "możemy sobie pomóc wejść wyżej"
+      ]
+    ],
+    "ack": [
+      "spokojnie, zaczniemy od nowa",
+      "nic się nie stało, gramy dalej",
+      "zdarza się, skupmy się na następnej akcji"
+    ],
+    "plan": [
+      "możemy się rozdzielić i zebrać ponownie",
+      "spróbowałbym wolniejszego podejścia",
+      "zmieńmy drogę w tej rundzie"
+    ]
+  },
+  "fr": {
+    "prefix": [
+      "bon",
+      "équipe",
+      "alors",
+      "d’accord",
+      "franchement",
+      "oui"
+    ],
+    "tail": [
+      "un angle à la fois",
+      "gardons nos distances",
+      "le timing compte",
+      "on pourra changer au prochain round",
+      "pas besoin de se précipiter",
+      "regardons le chrono"
+    ],
+    "empty": [
+      "je n’ai plus de grenades",
+      "mes grenades sont déjà utilisées",
+      "je n’ai plus d’utilitaire"
+    ],
+    "body": [
+      [
+        "salut tout le monde",
+        "bonjour l’équipe, bonne chance",
+        "salut, prêts pour ce round ?"
+      ],
+      [
+        "bien joué sur cette action",
+        "ce timing était propre",
+        "beau travail, l’équipe"
+      ],
+      [
+        "ma faute, mauvais timing",
+        "désolé pour cette erreur",
+        "je dois faire plus attention"
+      ],
+      [
+        "j’ai encore {utility}",
+        "mes grenades disponibles sont {utility}",
+        "je transporte {utility}"
+      ],
+      [
+        "j’ai ${cash}",
+        "mon budget est de ${cash}",
+        "je peux acheter pour ${cash}"
+      ],
+      [
+        "je joue avec {weapon}",
+        "mon arme est {weapon}",
+        "j’ai {weapon} actuellement"
+      ],
+      [
+        "ce duel était serré",
+        "je m’en suis sorti sur ce duel",
+        "je dois me reconcentrer après ce duel"
+      ],
+      [
+        "j’ai perdu ce duel",
+        "j’ai décalé au mauvais moment",
+        "au prochain round je changerai le rythme"
+      ],
+      [
+        "la bombe est posée",
+        "le compte à rebours de la bombe tourne",
+        "on est en phase après la pose"
+      ],
+      [
+        "je vérifie un autre chemin",
+        "j’explore un nouveau passage",
+        "je regarde cette route"
+      ],
+      [
+        "on pourrait changer la rotation",
+        "un autre chemin peut marcher",
+        "on peut changer de rythme"
+      ],
+      [
+        "surveillons les angles",
+        "un peu plus d’espace aiderait",
+        "ne décalons pas tous ensemble"
+      ],
+      [
+        "quel est le plan pour ce round ?",
+        "vous préférez quelle approche ?",
+        "on peut essayer un autre placement"
+      ],
+      [
+        "je n’ai pas compris",
+        "tu peux répéter ?",
+        "qu’est-ce que tu voulais dire ?"
+      ],
+      [
+        "je dois améliorer mon placement de viseur",
+        "je travaille mon timing",
+        "chaque round est différent"
+      ],
+      [
+        "il me reste {hp} HP",
+        "ma santé est de {hp} HP",
+        "je dois faire attention avec {hp} HP"
+      ],
+      [
+        "je mène avec {frags} frags, essayez de me rattraper",
+        "la première place est à moi pour le moment, {frags} frags",
+        "je suis en tête du tableau, suivez le rythme"
+      ],
+      [
+        "ce duel m’a énervé",
+        "je suis frustré, je dois me reconcentrer",
+        "cette erreur m’agace"
+      ],
+      [
+        "cet angle me rend nerveux",
+        "ce combat m’a un peu fait peur",
+        "je n’aime pas ces chances"
+      ],
+      [
+        "je me sens courageux ce round",
+        "je veux prendre un plus gros risque",
+        "je vais tenter une action audacieuse"
+      ],
+      [
+        "je vais être prudent",
+        "il me faut une approche plus patiente",
+        "je veux vérifier chaque angle d’abord"
+      ],
+      [
+        "je veux la tête du classement",
+        "la place {rank} ne me suffit pas",
+        "je cherche mon prochain frag"
+      ],
+      [
+        "on peut tenter un boost entre coéquipiers",
+        "j’aurais besoin d’aide pour cette corniche",
+        "on peut s’aider à monter"
+      ]
+    ],
+    "ack": [
+      "pas de souci, on repart",
+      "tout va bien, on continue",
+      "ça arrive, concentrons-nous sur la suite"
+    ],
+    "plan": [
+      "on pourrait se séparer puis se regrouper",
+      "je tenterais une approche plus lente",
+      "changeons de route ce round"
+    ]
+  },
+  "ru": {
+    "prefix": [
+      "ладно",
+      "команда",
+      "ну что",
+      "хорошо",
+      "слушайте",
+      "да"
+    ],
+    "tail": [
+      "проверяем углы по одному",
+      "держим дистанцию",
+      "тайминг решает",
+      "в следующем раунде можно поменять",
+      "без спешки",
+      "следим за временем"
+    ],
+    "empty": [
+      "гранат больше нет",
+      "мои гранаты уже потрачены",
+      "у меня не осталось гранат"
+    ],
+    "body": [
+      [
+        "привет всем",
+        "привет, команда, удачи",
+        "привет, готовы к раунду?"
+      ],
+      [
+        "хорошо сыграно",
+        "отличный тайминг",
+        "хорошая работа, команда"
+      ],
+      [
+        "моя ошибка, плохой тайминг",
+        "извините за ошибку",
+        "надо быть осторожнее"
+      ],
+      [
+        "у меня ещё есть {utility}",
+        "доступные гранаты: {utility}",
+        "я несу {utility}"
+      ],
+      [
+        "у меня ${cash}",
+        "мой бюджет ${cash}",
+        "могу купить на ${cash}"
+      ],
+      [
+        "я играю с {weapon}",
+        "моё оружие — {weapon}",
+        "сейчас у меня {weapon}"
+      ],
+      [
+        "эта дуэль была близкой",
+        "я выиграл ту перестрелку",
+        "после дуэли надо собраться"
+      ],
+      [
+        "я проиграл ту дуэль",
+        "я вышел не вовремя",
+        "в следующем раунде сменю темп"
+      ],
+      [
+        "бомба установлена",
+        "таймер бомбы уже идёт",
+        "сейчас играем после установки"
+      ],
+      [
+        "проверяю другой путь",
+        "исследую новый проход",
+        "осматриваю этот маршрут"
+      ],
+      [
+        "можно сменить направление",
+        "другой путь может сработать",
+        "давайте изменим темп"
+      ],
+      [
+        "лучше следить за углами",
+        "нам нужен больший интервал",
+        "не выходим все одновременно"
+      ],
+      [
+        "какой план на этот раунд?",
+        "какой заход предпочитаете?",
+        "можно попробовать другую расстановку"
+      ],
+      [
+        "я не понял",
+        "можешь повторить?",
+        "что ты имел в виду?"
+      ],
+      [
+        "надо улучшать положение прицела",
+        "работаю над таймингом",
+        "каждый раунд немного другой"
+      ],
+      [
+        "у меня осталось {hp} HP",
+        "моё здоровье — {hp} HP",
+        "с {hp} HP надо осторожнее"
+      ],
+      [
+        "я первый с {frags} фрагами, попробуйте догнать",
+        "первое место пока моё, {frags} фрагов",
+        "я возглавляю таблицу, догоняйте"
+      ],
+      [
+        "та дуэль меня разозлила",
+        "я раздражён, надо собраться",
+        "меня злит та ошибка"
+      ],
+      [
+        "мне тревожно на этом углу",
+        "тот бой немного напугал меня",
+        "мне не нравятся эти шансы"
+      ],
+      [
+        "в этом раунде я готов рискнуть",
+        "хочу пойти на больший риск",
+        "попробую смелый выход"
+      ],
+      [
+        "сыграю осторожнее",
+        "мне нужен более терпеливый подход",
+        "сначала проверю каждый угол"
+      ],
+      [
+        "хочу первое место в таблице",
+        "места {rank} мне мало",
+        "охочусь за следующим фрагом"
+      ],
+      [
+        "попробуем подсадку с напарником",
+        "мне нужна помощь на этот выступ",
+        "можем помочь друг другу подняться"
+      ]
+    ],
+    "ack": [
+      "ничего страшного, начнём заново",
+      "всё нормально, продолжаем",
+      "бывает, сосредоточимся на следующем"
+    ],
+    "plan": [
+      "можно разделиться и снова собраться",
+      "я бы попробовал более медленный заход",
+      "давайте сменим путь в этом раунде"
+    ]
+  },
+  "uk": {
+    "prefix": [
+      "гаразд",
+      "командо",
+      "ну що",
+      "добре",
+      "слухайте",
+      "так"
+    ],
+    "tail": [
+      "перевіряємо кути по одному",
+      "тримаємо дистанцію",
+      "таймінг важливий",
+      "у наступному раунді можна змінити",
+      "без поспіху",
+      "стежимо за часом"
+    ],
+    "empty": [
+      "гранат більше немає",
+      "мої гранати вже використані",
+      "у мене не лишилося гранат"
+    ],
+    "body": [
+      [
+        "привіт усім",
+        "привіт, командо, успіхів",
+        "привіт, готові до раунду?"
+      ],
+      [
+        "гарно зіграно",
+        "чудовий таймінг",
+        "гарна робота, командо"
+      ],
+      [
+        "моя помилка, поганий таймінг",
+        "вибачте за помилку",
+        "треба бути обережнішим"
+      ],
+      [
+        "у мене ще є {utility}",
+        "доступні гранати: {utility}",
+        "я несу {utility}"
+      ],
+      [
+        "у мене ${cash}",
+        "мій бюджет ${cash}",
+        "можу купити на ${cash}"
+      ],
+      [
+        "я граю з {weapon}",
+        "моя зброя — {weapon}",
+        "зараз у мене {weapon}"
+      ],
+      [
+        "ця дуель була близькою",
+        "я пройшов ту перестрілку",
+        "після дуелі треба зібратися"
+      ],
+      [
+        "я програв ту дуель",
+        "я вийшов невчасно",
+        "у наступному раунді зміню темп"
+      ],
+      [
+        "бомбу встановлено",
+        "таймер бомби вже йде",
+        "зараз граємо після встановлення"
+      ],
+      [
+        "перевіряю інший шлях",
+        "досліджую новий прохід",
+        "оглядаю цей маршрут"
+      ],
+      [
+        "можна змінити напрямок",
+        "інший шлях може спрацювати",
+        "змінимо темп"
+      ],
+      [
+        "краще стежити за кутами",
+        "нам потрібна більша відстань",
+        "не виходьмо всі одночасно"
+      ],
+      [
+        "який план на цей раунд?",
+        "якому заходу віддаєте перевагу?",
+        "можна спробувати іншу розстановку"
+      ],
+      [
+        "я не зрозумів",
+        "можеш повторити?",
+        "що ти мав на увазі?"
+      ],
+      [
+        "треба покращувати положення прицілу",
+        "працюю над таймінгом",
+        "кожен раунд трохи інший"
+      ],
+      [
+        "у мене залишилося {hp} HP",
+        "моє здоров’я — {hp} HP",
+        "з {hp} HP треба обережніше"
+      ],
+      [
+        "я перший із {frags} фрагами, спробуйте наздогнати",
+        "перше місце поки моє, {frags} фрагів",
+        "я очолюю таблицю, наздоганяйте"
+      ],
+      [
+        "та дуель мене розлютила",
+        "я роздратований, треба зібратися",
+        "мене злить та помилка"
+      ],
+      [
+        "мені тривожно на цьому куті",
+        "той бій трохи налякав мене",
+        "мені не подобаються ці шанси"
+      ],
+      [
+        "у цьому раунді я готовий ризикнути",
+        "хочу піти на більший ризик",
+        "спробую сміливий вихід"
+      ],
+      [
+        "зіграю обережніше",
+        "мені потрібен терплячіший підхід",
+        "спочатку перевірю кожен кут"
+      ],
+      [
+        "хочу перше місце в таблиці",
+        "місця {rank} мені замало",
+        "полюю за наступним фрагом"
+      ],
+      [
+        "спробуймо підсадку з напарником",
+        "мені потрібна допомога на цей виступ",
+        "можемо допомогти одне одному піднятися"
+      ]
+    ],
+    "ack": [
+      "нічого страшного, почнемо знову",
+      "усе нормально, продовжуємо",
+      "буває, зосередьмося на наступному"
+    ],
+    "plan": [
+      "можна розділитися і знову зібратися",
+      "я спробував би повільніший захід",
+      "змінимо шлях у цьому раунді"
+    ]
+  },
+  "sk": {
+    "prefix": [
+      "dobre",
+      "tím",
+      "no teda",
+      "jasné",
+      "počúvajte",
+      "áno"
+    ],
+    "tail": [
+      "jeden uhol po druhom",
+      "držme si odstup",
+      "načasovanie je dôležité",
+      "ďalšie kolo môžeme zmeniť",
+      "bez ponáhľania",
+      "sledujme čas"
+    ],
+    "empty": [
+      "už nemám granáty",
+      "moje granáty sú použité",
+      "nemám žiadne utility"
+    ],
+    "body": [
+      [
+        "ahojte všetci",
+        "ahoj tím, veľa šťastia",
+        "ahoj, pripravení na kolo?"
+      ],
+      [
+        "pekne zahrané",
+        "to načasovanie bolo čisté",
+        "dobrá práca, tím"
+      ],
+      [
+        "moja chyba, zlý moment",
+        "prepáčte za chybu",
+        "musím byť opatrnejší"
+      ],
+      [
+        "mám ešte {utility}",
+        "dostupné granáty sú {utility}",
+        "nesiem {utility}"
+      ],
+      [
+        "mám ${cash}",
+        "môj rozpočet je ${cash}",
+        "môžem kúpiť za ${cash}"
+      ],
+      [
+        "hrám s {weapon}",
+        "moja zbraň je {weapon}",
+        "teraz mám {weapon}"
+      ],
+      [
+        "ten súboj bol tesný",
+        "zvládol som ten súboj",
+        "po tom súboji sa treba sústrediť"
+      ],
+      [
+        "prehral som ten súboj",
+        "vykukol som v zlom čase",
+        "ďalšie kolo skúsim iné tempo"
+      ],
+      [
+        "bomba je položená",
+        "časovač bomby beží",
+        "teraz hráme po položení"
+      ],
+      [
+        "kontrolujem inú cestu",
+        "skúmam nový priechod",
+        "obzerám sa po tejto trase"
+      ],
+      [
+        "môžeme zmeniť rotáciu",
+        "iná cesta môže fungovať",
+        "skúsme iné tempo"
+      ],
+      [
+        "strážme uhly",
+        "pomohol by väčší odstup",
+        "nevykukujme všetci naraz"
+      ],
+      [
+        "aký je plán na toto kolo?",
+        "ktorý prístup uprednostňujete?",
+        "môžeme skúsiť iné rozostavenie"
+      ],
+      [
+        "nerozumel som tomu",
+        "môžeš to zopakovať?",
+        "čo si tým myslel?"
+      ],
+      [
+        "musím zlepšiť umiestnenie mieridla",
+        "pracujem na načasovaní",
+        "každé kolo je trochu iné"
+      ],
+      [
+        "zostáva mi {hp} HP",
+        "moje zdravie je {hp} HP",
+        "s {hp} HP musím byť opatrný"
+      ],
+      [
+        "vediem s {frags} fragmi, skúste ma dobehnúť",
+        "prvé miesto je zatiaľ moje, {frags} fragov",
+        "som na čele tabuľky, držte krok"
+      ],
+      [
+        "ten súboj ma nahneval",
+        "som frustrovaný, musím sa upokojiť",
+        "tá chyba ma hnevá"
+      ],
+      [
+        "pri tomto uhle som nervózny",
+        "ten boj ma trochu vystrašil",
+        "nepáčia sa mi tieto šance"
+      ],
+      [
+        "v tomto kole sa cítim odvážne",
+        "chcem podstúpiť väčšie riziko",
+        "skúsim odvážnu akciu"
+      ],
+      [
+        "budem hrať opatrne",
+        "potrebujem trpezlivejší prístup",
+        "najprv skontrolujem každý uhol"
+      ],
+      [
+        "chcem prvé miesto v tabuľke",
+        "miesto {rank} mi nestačí",
+        "lovím ďalší frag"
+      ],
+      [
+        "skúsme výskok s pomocou spoluhráča",
+        "potrebujem pomoc na túto hranu",
+        "môžeme si pomôcť vyššie"
+      ]
+    ],
+    "ack": [
+      "nič sa nedeje, začneme znova",
+      "v poriadku, pokračujeme",
+      "to sa stáva, sústreďme sa na ďalšiu akciu"
+    ],
+    "plan": [
+      "môžeme sa rozdeliť a znovu stretnúť",
+      "skúsil by som pomalší prístup",
+      "zmeňme v tomto kole cestu"
+    ]
+  },
+  "pt": {
+    "prefix": [
+      "beleza",
+      "equipe",
+      "então",
+      "certo",
+      "olha",
+      "sim"
+    ],
+    "tail": [
+      "um ângulo por vez",
+      "vamos manter distância",
+      "o timing importa",
+      "podemos mudar no próximo round",
+      "sem pressa",
+      "olhem o relógio"
+    ],
+    "empty": [
+      "estou sem granadas",
+      "minhas granadas já foram usadas",
+      "não tenho mais utilitários"
+    ],
+    "body": [
+      [
+        "olá pessoal",
+        "oi equipe, boa sorte",
+        "olá, prontos para o round?"
+      ],
+      [
+        "bem jogado",
+        "esse timing foi bom",
+        "bom trabalho, equipe"
+      ],
+      [
+        "erro meu, timing ruim",
+        "desculpa pelo erro",
+        "preciso tomar mais cuidado"
+      ],
+      [
+        "ainda tenho {utility}",
+        "meus utilitários são {utility}",
+        "estou levando {utility}"
+      ],
+      [
+        "tenho ${cash}",
+        "meu orçamento é ${cash}",
+        "posso comprar com ${cash}"
+      ],
+      [
+        "estou usando {weapon}",
+        "minha arma é {weapon}",
+        "agora estou de {weapon}"
+      ],
+      [
+        "esse duelo foi apertado",
+        "consegui passar daquele duelo",
+        "preciso focar depois desse duelo"
+      ],
+      [
+        "perdi aquele duelo",
+        "abri no momento errado",
+        "no próximo round vou mudar o ritmo"
+      ],
+      [
+        "a bomba está plantada",
+        "o tempo da bomba está correndo",
+        "agora estamos no pós-plant"
+      ],
+      [
+        "estou conferindo outro caminho",
+        "estou explorando uma nova passagem",
+        "estou olhando essa rota"
+      ],
+      [
+        "podemos mudar a rotação",
+        "outro caminho pode funcionar",
+        "vamos mudar o ritmo"
+      ],
+      [
+        "precisamos vigiar os ângulos",
+        "um pouco mais de espaço ajuda",
+        "não vamos abrir todos juntos"
+      ],
+      [
+        "qual é o plano deste round?",
+        "qual entrada vocês preferem?",
+        "podemos testar outra formação"
+      ],
+      [
+        "não entendi",
+        "pode repetir?",
+        "o que você quis dizer?"
+      ],
+      [
+        "preciso melhorar minha mira posicionada",
+        "estou trabalhando meu timing",
+        "cada round é um pouco diferente"
+      ],
+      [
+        "estou com {hp} HP",
+        "minha vida é {hp} HP",
+        "preciso de cuidado com {hp} HP"
+      ],
+      [
+        "estou no topo com {frags} frags, tentem me alcançar",
+        "o primeiro lugar é meu por enquanto, {frags} frags",
+        "estou liderando o placar, acompanhem se puderem"
+      ],
+      [
+        "aquele duelo me deixou irritado",
+        "estou frustrado, preciso me recompor",
+        "aquele erro me irrita"
+      ],
+      [
+        "estou nervoso com esse ângulo",
+        "aquela luta me assustou um pouco",
+        "não gosto dessas chances"
+      ],
+      [
+        "estou me sentindo corajoso neste round",
+        "quero assumir um risco maior",
+        "vou tentar uma jogada ousada"
+      ],
+      [
+        "vou jogar com cuidado",
+        "preciso de uma entrada mais paciente",
+        "quero conferir cada ângulo primeiro"
+      ],
+      [
+        "quero o topo do placar",
+        "a posição {rank} não é suficiente",
+        "estou caçando o próximo frag"
+      ],
+      [
+        "vamos tentar um boost de companheiro",
+        "preciso de uma ajuda para subir aqui",
+        "podemos ajudar um ao outro a subir"
+      ]
+    ],
+    "ack": [
+      "sem problema, podemos recomeçar",
+      "tudo bem, vamos continuar",
+      "acontece, foco na próxima jogada"
+    ],
+    "plan": [
+      "podemos espalhar e reagrupar",
+      "eu tentaria uma entrada mais lenta",
+      "vamos mudar de rota neste round"
+    ]
+  },
+  "tr": {
+    "prefix": [
+      "tamam",
+      "takım",
+      "peki",
+      "öyleyse",
+      "dinleyin",
+      "evet"
+    ],
+    "tail": [
+      "açıları tek tek kontrol edelim",
+      "biraz mesafe bırakalım",
+      "zamanlama önemli",
+      "sonraki elde değiştirebiliriz",
+      "acele etmeyelim",
+      "süreye dikkat edelim"
+    ],
+    "empty": [
+      "bombam kalmadı",
+      "bombalarımı kullandım",
+      "envanterimde bomba yok"
+    ],
+    "body": [
+      [
+        "herkese merhaba",
+        "merhaba takım, bol şans",
+        "selam, bu ele hazır mısınız?"
+      ],
+      [
+        "güzel oynadın",
+        "o zamanlama çok iyiydi",
+        "iyi iş, takım"
+      ],
+      [
+        "benim hatam, yanlış zamanlama",
+        "hata için özür dilerim",
+        "daha dikkatli olmalıyım"
+      ],
+      [
+        "hâlâ {utility} var",
+        "kullanılabilir bombalarım {utility}",
+        "yanımda {utility} var"
+      ],
+      [
+        "${cash} param var",
+        "bütçem ${cash}",
+        "${cash} ile alışveriş yapabilirim"
+      ],
+      [
+        "{weapon} kullanıyorum",
+        "silahım {weapon}",
+        "şu an {weapon} var"
+      ],
+      [
+        "o düello çok yakındı",
+        "o çatışmadan çıktım",
+        "düellodan sonra odaklanmalıyım"
+      ],
+      [
+        "o düelloyu kaybettim",
+        "yanlış anda çıktım",
+        "sonraki elde tempoyu değiştireceğim"
+      ],
+      [
+        "bomba kuruldu",
+        "bombanın süresi işliyor",
+        "artık kurulum sonrası aşamadayız"
+      ],
+      [
+        "başka bir yolu kontrol ediyorum",
+        "yeni bir geçidi keşfediyorum",
+        "bu rotayı inceliyorum"
+      ],
+      [
+        "rotasyonu değiştirebiliriz",
+        "başka bir yol işe yarayabilir",
+        "tempoyu değiştirelim"
+      ],
+      [
+        "açıları izlemeliyiz",
+        "biraz daha mesafe iyi olur",
+        "hepimiz aynı anda çıkmayalım"
+      ],
+      [
+        "bu elin planı ne?",
+        "hangi yaklaşımı tercih edersiniz?",
+        "başka bir düzen deneyebiliriz"
+      ],
+      [
+        "anlamadım",
+        "tekrar eder misin?",
+        "ne demek istedin?"
+      ],
+      [
+        "nişangâh yerleşimimi geliştirmeliyim",
+        "zamanlamam üzerinde çalışıyorum",
+        "her el biraz farklı"
+      ],
+      [
+        "{hp} HP kaldı",
+        "canım {hp} HP",
+        "{hp} HP ile dikkatli olmalıyım"
+      ],
+      [
+        "{frags} frag ile liderim, beni yakalamayı deneyin",
+        "ilk sıra şimdilik benim, {frags} frag",
+        "skor tablosunda liderim, yetişebilirseniz yetişin"
+      ],
+      [
+        "o düello beni sinirlendirdi",
+        "gerginiyim, yeniden odaklanmalıyım",
+        "o hata beni kızdırıyor"
+      ],
+      [
+        "bu açı beni tedirgin ediyor",
+        "o çatışma beni biraz korkuttu",
+        "bu ihtimalleri sevmiyorum"
+      ],
+      [
+        "bu el kendimi cesur hissediyorum",
+        "daha büyük risk almak istiyorum",
+        "cesur bir oyun deneyeceğim"
+      ],
+      [
+        "dikkatli oynayacağım",
+        "daha sabırlı yaklaşmalıyım",
+        "önce bütün açıları kontrol edeceğim"
+      ],
+      [
+        "skor tablosunda ilk sırayı istiyorum",
+        "{rank}. sıra bana yetmez",
+        "sonraki fragı avlıyorum"
+      ],
+      [
+        "takım arkadaşıyla boost deneyelim",
+        "bu çıkıntıya çıkmak için yardım lazım",
+        "birbirimizi yukarı çıkarabiliriz"
+      ]
+    ],
+    "ack": [
+      "sorun değil, yeniden deneriz",
+      "her şey yolunda, devam edelim",
+      "olur böyle, sonraki oyuna odaklanalım"
+    ],
+    "plan": [
+      "dağılıp yeniden toplanabiliriz",
+      "daha yavaş bir yaklaşım denerdim",
+      "bu el rotayı değiştirelim"
+    ]
+  },
+  "ar": {
+    "prefix": [
+      "حسناً",
+      "يا فريق",
+      "طيب",
+      "بصراحة",
+      "اسمعوا",
+      "نعم"
+    ],
+    "tail": [
+      "زاوية واحدة كل مرة",
+      "لنحافظ على المسافة",
+      "التوقيت مهم",
+      "يمكننا التغيير في الجولة القادمة",
+      "لا داعي للعجلة",
+      "انتبهوا للوقت"
+    ],
+    "empty": [
+      "لم تبق لدي قنابل",
+      "استخدمت قنابلي كلها",
+      "ليس لدي أي قنابل الآن"
+    ],
+    "body": [
+      [
+        "مرحباً بالجميع",
+        "أهلاً يا فريق، بالتوفيق",
+        "مرحباً، هل أنتم جاهزون للجولة؟"
+      ],
+      [
+        "لعب جميل",
+        "كان التوقيت ممتازاً",
+        "عمل جيد يا فريق"
+      ],
+      [
+        "خطئي، كان توقيتي سيئاً",
+        "آسف على الخطأ",
+        "يجب أن أكون أكثر حذراً"
+      ],
+      [
+        "لا يزال لدي {utility}",
+        "القنابل المتاحة لدي {utility}",
+        "أحمل {utility}"
+      ],
+      [
+        "معي ${cash}",
+        "ميزانيتي ${cash}",
+        "أستطيع الشراء بمبلغ ${cash}"
+      ],
+      [
+        "أستخدم {weapon}",
+        "سلاحي هو {weapon}",
+        "معي الآن {weapon}"
+      ],
+      [
+        "كانت تلك المواجهة متقاربة",
+        "نجوت من تلك المواجهة",
+        "أحتاج للتركيز بعد المواجهة"
+      ],
+      [
+        "خسرت تلك المواجهة",
+        "خرجت في الوقت الخطأ",
+        "سأغير الإيقاع في الجولة القادمة"
+      ],
+      [
+        "تم زرع القنبلة",
+        "مؤقت القنبلة يعمل",
+        "نحن الآن في مرحلة ما بعد الزرع"
+      ],
+      [
+        "أفحص طريقاً آخر",
+        "أستكشف ممراً جديداً",
+        "أفحص هذا المسار"
+      ],
+      [
+        "يمكننا تغيير اتجاه الدوران",
+        "قد ينجح طريق آخر",
+        "لنغير الإيقاع"
+      ],
+      [
+        "علينا مراقبة الزوايا",
+        "المزيد من المسافة سيساعد",
+        "لا نخرج جميعاً في الوقت نفسه"
+      ],
+      [
+        "ما خطة هذه الجولة؟",
+        "أي طريق تفضلون؟",
+        "يمكننا تجربة توزيع مختلف"
+      ],
+      [
+        "لم أفهم",
+        "هل يمكنك التكرار؟",
+        "ماذا كنت تقصد؟"
+      ],
+      [
+        "علي تحسين موضع التصويب",
+        "أعمل على تحسين توقيتي",
+        "كل جولة مختلفة قليلاً"
+      ],
+      [
+        "بقي لدي {hp} HP",
+        "صحتي هي {hp} HP",
+        "يجب أن أحذر مع {hp} HP"
+      ],
+      [
+        "أنا في الصدارة مع {frags} قتلاً، حاولوا اللحاق بي",
+        "المركز الأول لي حالياً، {frags} قتلاً",
+        "أنا أتصدر اللوحة، واكبوني إن استطعتم"
+      ],
+      [
+        "تلك المواجهة أغضبتني",
+        "أنا محبط وأحتاج لاستعادة تركيزي",
+        "ذلك الخطأ يزعجني"
+      ],
+      [
+        "أنا متوتر من هذه الزاوية",
+        "تلك المواجهة أخافتني قليلاً",
+        "لا أحب هذه الاحتمالات"
+      ],
+      [
+        "أشعر بالشجاعة في هذه الجولة",
+        "أريد خوض مخاطرة أكبر",
+        "سأحاول حركة جريئة"
+      ],
+      [
+        "سألعب بحذر",
+        "أحتاج لتقدم أكثر صبراً",
+        "أريد فحص كل زاوية أولاً"
+      ],
+      [
+        "أريد صدارة لوحة النتائج",
+        "المركز {rank} لا يكفيني",
+        "أطارد القتل التالي"
+      ],
+      [
+        "لنجرب الرفع بمساعدة زميل",
+        "أحتاج مساعدة للصعود لهذا الحاجز",
+        "يمكننا مساعدة بعضنا على الصعود"
+      ]
+    ],
+    "ack": [
+      "لا مشكلة، يمكننا البدء مجدداً",
+      "كل شيء بخير، لنكمل",
+      "تحدث الأخطاء، لنركز على التالي"
+    ],
+    "plan": [
+      "يمكننا التفرق ثم التجمع مجدداً",
+      "أفضل تجربة تقدم أبطأ",
+      "لنغير الطريق في هذه الجولة"
+    ]
+  },
+  "zh": {
+    "prefix": [
+      "好",
+      "队友们",
+      "说真的",
+      "那么",
+      "嗯",
+      "大家"
+    ],
+    "tail": [
+      "一个角度一个角度检查",
+      "保持一点距离",
+      "时机很重要",
+      "下回合可以调整",
+      "别着急",
+      "注意回合时间"
+    ],
+    "empty": [
+      "我已经没有投掷物了",
+      "我的手雷已经用完了",
+      "背包里没有投掷物"
+    ],
+    "body": [
+      [
+        "大家好",
+        "队友们好，祝好运",
+        "你好，准备好这个回合了吗？"
+      ],
+      [
+        "打得漂亮",
+        "刚才的时机很好",
+        "干得好，队友们"
+      ],
+      [
+        "我的失误，时机不对",
+        "抱歉，刚才犯错了",
+        "我要更小心一点"
+      ],
+      [
+        "我还有{utility}",
+        "我能用的投掷物是{utility}",
+        "我带着{utility}"
+      ],
+      [
+        "我现在有${cash}",
+        "我的预算是${cash}",
+        "我能花${cash}买装备"
+      ],
+      [
+        "我正在用{weapon}",
+        "我的武器是{weapon}",
+        "我现在拿着{weapon}"
+      ],
+      [
+        "刚才那次对枪很险",
+        "我打过了刚才那场交火",
+        "对枪之后要重新集中注意力"
+      ],
+      [
+        "我刚才对枪输了",
+        "我出得不是时候",
+        "下回合我会换个节奏"
+      ],
+      [
+        "炸弹已经安装",
+        "炸弹倒计时已经开始",
+        "现在是下包后的阶段"
+      ],
+      [
+        "我正在检查另一条路",
+        "我正在探索新的通道",
+        "我正在查看这条路线"
+      ],
+      [
+        "我们可以换个转点方向",
+        "另一条路也许有用",
+        "我们换个节奏吧"
+      ],
+      [
+        "我们应该注意各个角度",
+        "拉开一点距离会更好",
+        "不要所有人同时拉出去"
+      ],
+      [
+        "这个回合怎么打？",
+        "你们想走哪条路？",
+        "我们可以换个站位"
+      ],
+      [
+        "我没听懂",
+        "可以再说一次吗？",
+        "你刚才是什么意思？"
+      ],
+      [
+        "我的预瞄还需要练习",
+        "我正在改进出枪时机",
+        "每个回合都有点不同"
+      ],
+      [
+        "我还剩{hp} HP",
+        "我现在的血量是{hp} HP",
+        "只有{hp} HP，要小心"
+      ],
+      [
+        "我以{frags}个击杀领跑，有本事来追",
+        "第一名暂时是我的，{frags}个击杀",
+        "我在积分榜第一，看看谁能追上"
+      ],
+      [
+        "刚才的对枪让我生气",
+        "我有点烦躁，要重新集中注意力",
+        "刚才的失误让我恼火"
+      ],
+      [
+        "这个角度让我有点紧张",
+        "刚才那场交火有点吓到我",
+        "我不喜欢这种胜算"
+      ],
+      [
+        "这个回合我想大胆一点",
+        "我想冒更大的风险",
+        "我要试一次大胆的行动"
+      ],
+      [
+        "我会小心一点",
+        "我需要更耐心地推进",
+        "我要先检查每个角度"
+      ],
+      [
+        "我想冲上积分榜第一",
+        "第{rank}名还不够",
+        "我要争取下一个击杀"
+      ],
+      [
+        "我们试试队友搭人梯吧",
+        "我需要帮忙上这个平台",
+        "我们可以互相帮忙爬上去"
+      ]
+    ],
+    "ack": [
+      "没关系，我们可以重新调整",
+      "没事，继续打",
+      "偶尔会失误，注意下一次机会"
+    ],
+    "plan": [
+      "我们可以先分散再集合",
+      "我想试试慢一点的进攻",
+      "这个回合换一条路线吧"
+    ]
+  },
+  "ko": {
+    "prefix": [
+      "좋아",
+      "팀원들",
+      "그러면",
+      "음",
+      "솔직히",
+      "그래"
+    ],
+    "tail": [
+      "각도를 하나씩 확인하자",
+      "간격을 조금 유지하자",
+      "타이밍이 중요해",
+      "다음 라운드에 바꿀 수 있어",
+      "서두를 필요 없어",
+      "시간을 확인하자"
+    ],
+    "empty": [
+      "수류탄이 이제 없어",
+      "내 투척물은 다 썼어",
+      "인벤토리에 투척물이 없어"
+    ],
+    "body": [
+      [
+        "다들 안녕",
+        "안녕 팀원들, 행운을 빌어",
+        "안녕, 이번 라운드 준비됐어?"
+      ],
+      [
+        "잘했어",
+        "그 타이밍은 좋았어",
+        "좋은 플레이야, 팀원들"
+      ],
+      [
+        "내 실수야, 타이밍이 안 좋았어",
+        "실수해서 미안해",
+        "좀 더 조심해야겠어"
+      ],
+      [
+        "아직 {utility} 있어",
+        "사용할 수 있는 투척물은 {utility}야",
+        "{utility} 가지고 있어"
+      ],
+      [
+        "지금 ${cash} 있어",
+        "내 예산은 ${cash}야",
+        "${cash}로 장비를 살 수 있어"
+      ],
+      [
+        "{weapon} 사용 중이야",
+        "내 무기는 {weapon}야",
+        "지금 {weapon} 들고 있어"
+      ],
+      [
+        "그 교전은 아슬아슬했어",
+        "그 교전은 이겨냈어",
+        "교전 후에 다시 집중해야겠어"
+      ],
+      [
+        "그 교전에서 졌어",
+        "잘못된 타이밍에 나갔어",
+        "다음 라운드에는 템포를 바꿀게"
+      ],
+      [
+        "폭탄이 설치됐어",
+        "폭탄 타이머가 돌고 있어",
+        "지금은 설치 후 상황이야"
+      ],
+      [
+        "다른 길을 확인하고 있어",
+        "새로운 통로를 탐색하고 있어",
+        "이 경로를 살펴보고 있어"
+      ],
+      [
+        "로테이션 방향을 바꿀 수 있어",
+        "다른 길이 통할 수도 있어",
+        "템포를 바꿔 보자"
+      ],
+      [
+        "각도를 지켜보자",
+        "간격을 조금 벌리는 게 좋겠어",
+        "다 같이 동시에 나가지 말자"
+      ],
+      [
+        "이번 라운드 계획이 뭐야?",
+        "어느 경로가 좋아?",
+        "다른 배치를 시도할 수 있어"
+      ],
+      [
+        "잘 못 알아들었어",
+        "다시 말해 줄래?",
+        "무슨 뜻이었어?"
+      ],
+      [
+        "조준점 위치를 더 연습해야겠어",
+        "타이밍을 개선하고 있어",
+        "매 라운드가 조금씩 달라"
+      ],
+      [
+        "{hp} HP 남았어",
+        "현재 체력은 {hp} HP야",
+        "{hp} HP니까 조심해야 해"
+      ],
+      [
+        "{frags}킬로 내가 선두야, 따라잡아 봐",
+        "지금은 내가 1위야, {frags}킬",
+        "점수판 맨 위에 있어, 따라올 수 있으면 와"
+      ],
+      [
+        "그 교전 때문에 화가 났어",
+        "짜증 나지만 다시 집중해야 해",
+        "그 실수가 속상해"
+      ],
+      [
+        "이 각도가 조금 무서워",
+        "그 교전에서 조금 겁먹었어",
+        "이 확률은 마음에 안 들어"
+      ],
+      [
+        "이번 라운드는 대담하게 할 거야",
+        "더 큰 위험을 감수하고 싶어",
+        "과감한 플레이를 해 볼게"
+      ],
+      [
+        "조심해서 플레이할게",
+        "조금 더 참을성 있게 접근해야 해",
+        "먼저 모든 각도를 확인할게"
+      ],
+      [
+        "점수판 1위를 차지하고 싶어",
+        "{rank}위로는 만족 못 해",
+        "다음 킬을 노리고 있어"
+      ],
+      [
+        "팀원과 부스트를 시도해 보자",
+        "이 턱에 올라가려면 도움이 필요해",
+        "서로 올라가도록 도와줄 수 있어"
+      ]
+    ],
+    "ack": [
+      "괜찮아, 다시 정리하면 돼",
+      "문제없어, 계속하자",
+      "그럴 수 있어, 다음 플레이에 집중하자"
+    ],
+    "plan": [
+      "흩어졌다가 다시 모여도 돼",
+      "조금 느리게 접근해 보고 싶어",
+      "이번 라운드에는 경로를 바꾸자"
+    ]
+  },
+  "ja": {
+    "prefix": [
+      "よし",
+      "みんな",
+      "じゃあ",
+      "うん",
+      "正直",
+      "さて"
+    ],
+    "tail": [
+      "角度を一つずつ確認しよう",
+      "少し間隔を空けよう",
+      "タイミングが大事だね",
+      "次のラウンドで変えられる",
+      "急がなくていい",
+      "残り時間を見よう"
+    ],
+    "empty": [
+      "投げ物はもうないよ",
+      "手榴弾は全部使ったよ",
+      "今は投げ物を持っていない"
+    ],
+    "body": [
+      [
+        "みんなこんにちは",
+        "こんにちは、いい試合にしよう",
+        "こんにちは、このラウンドの準備はできた？"
+      ],
+      [
+        "ナイスプレイ",
+        "今のタイミングは良かった",
+        "いい仕事だったね"
+      ],
+      [
+        "自分のミス、タイミングが悪かった",
+        "ミスしてごめん",
+        "もっと気をつけないと"
+      ],
+      [
+        "まだ{utility}があるよ",
+        "使える投げ物は{utility}だよ",
+        "{utility}を持っているよ"
+      ],
+      [
+        "今は${cash}あるよ",
+        "予算は${cash}だよ",
+        "${cash}で装備を買えるよ"
+      ],
+      [
+        "{weapon}を使っているよ",
+        "武器は{weapon}だよ",
+        "今は{weapon}を持っているよ"
+      ],
+      [
+        "さっきの撃ち合いは際どかった",
+        "あの撃ち合いは切り抜けた",
+        "撃ち合いの後は集中し直そう"
+      ],
+      [
+        "あの撃ち合いは負けた",
+        "出るタイミングを間違えた",
+        "次のラウンドはテンポを変えるよ"
+      ],
+      [
+        "爆弾は設置された",
+        "爆弾のタイマーが動いている",
+        "今は設置後の状況だね"
+      ],
+      [
+        "別の道を確認しているよ",
+        "新しい通路を探索しているよ",
+        "このルートを調べているよ"
+      ],
+      [
+        "ローテーションを変えてもいい",
+        "別の道が使えるかもしれない",
+        "テンポを変えてみよう"
+      ],
+      [
+        "角度を見ておこう",
+        "もう少し間隔を空けたい",
+        "全員で同時に出ないようにしよう"
+      ],
+      [
+        "このラウンドの作戦は？",
+        "どのルートがいい？",
+        "別の配置を試してもいいね"
+      ],
+      [
+        "聞き取れなかった",
+        "もう一度言ってくれる？",
+        "どういう意味だった？"
+      ],
+      [
+        "クロスヘアの置き方を練習中",
+        "タイミングを改善しているよ",
+        "毎ラウンド少しずつ違うね"
+      ],
+      [
+        "残り{hp} HPだよ",
+        "今の体力は{hp} HP",
+        "{hp} HPだから気をつけよう"
+      ],
+      [
+        "{frags}キルでトップだよ、追いついてみて",
+        "今は自分が1位、{frags}キル",
+        "スコアボードの先頭だ、追ってこられるかな"
+      ],
+      [
+        "あの撃ち合いで腹が立った",
+        "少し苛立っている、集中し直そう",
+        "あのミスが悔しい"
+      ],
+      [
+        "この角度は少し怖い",
+        "さっきの撃ち合いは少し怖かった",
+        "この勝算はあまり好きじゃない"
+      ],
+      [
+        "このラウンドは大胆にいくよ",
+        "もっとリスクを取ってみたい",
+        "思い切ったプレイを試すよ"
+      ],
+      [
+        "慎重にプレイするよ",
+        "もっと我慢して進めたい",
+        "先に角度を一つずつ確認したい"
+      ],
+      [
+        "スコアボードの1位を取りたい",
+        "{rank}位では満足できない",
+        "次のキルを狙っているよ"
+      ],
+      [
+        "味方とブーストを試そう",
+        "この段差に上がるのを手伝ってほしい",
+        "お互いに上がるのを助けられるね"
+      ]
+    ],
+    "ack": [
+      "大丈夫、立て直せるよ",
+      "気にしないで、続けよう",
+      "そういうこともある、次に集中しよう"
+    ],
+    "plan": [
+      "散開してから合流してもいいね",
+      "少しゆっくり攻めてみたい",
+      "このラウンドはルートを変えよう"
+    ]
+  },
+  "de": {
+    "prefix": [
+      "okay",
+      "Leute",
+      "also",
+      "gut",
+      "ehrlich",
+      "ja"
+    ],
+    "tail": [
+      "ein Winkel nach dem anderen",
+      "halten wir etwas Abstand",
+      "das Timing ist wichtig",
+      "nächste Runde können wir wechseln",
+      "keine Eile",
+      "achtet auf die Zeit"
+    ],
+    "empty": [
+      "ich habe keine Granaten mehr",
+      "meine Granaten sind verbraucht",
+      "keine Utility mehr im Inventar"
+    ],
+    "body": [
+      [
+        "hallo zusammen",
+        "hallo Team, viel Glück",
+        "hallo, bereit für diese Runde?"
+      ],
+      [
+        "gut gespielt",
+        "das Timing war sauber",
+        "gute Arbeit, Team"
+      ],
+      [
+        "mein Fehler, schlechtes Timing",
+        "entschuldigt den Fehler",
+        "ich muss vorsichtiger sein"
+      ],
+      [
+        "ich habe noch {utility}",
+        "meine verfügbare Utility ist {utility}",
+        "ich trage {utility}"
+      ],
+      [
+        "ich habe ${cash}",
+        "mein Budget ist ${cash}",
+        "ich kann für ${cash} einkaufen"
+      ],
+      [
+        "ich spiele mit {weapon}",
+        "meine Waffe ist {weapon}",
+        "ich habe gerade {weapon}"
+      ],
+      [
+        "das Duell war knapp",
+        "ich habe den Kampf überstanden",
+        "nach dem Duell muss ich mich sammeln"
+      ],
+      [
+        "ich habe das Duell verloren",
+        "ich bin im falschen Moment raus",
+        "nächste Runde ändere ich das Tempo"
+      ],
+      [
+        "die Bombe ist gelegt",
+        "der Bombentimer läuft",
+        "wir spielen jetzt nach dem Legen"
+      ],
+      [
+        "ich prüfe einen anderen Weg",
+        "ich erkunde einen neuen Durchgang",
+        "ich sehe mir diese Route an"
+      ],
+      [
+        "wir könnten die Rotation ändern",
+        "ein anderer Weg könnte klappen",
+        "wechseln wir das Tempo"
+      ],
+      [
+        "wir sollten die Winkel beobachten",
+        "etwas mehr Abstand wäre gut",
+        "gehen wir nicht alle gleichzeitig raus"
+      ],
+      [
+        "was ist der Plan für diese Runde?",
+        "welchen Weg bevorzugt ihr?",
+        "wir können eine andere Aufstellung testen"
+      ],
+      [
+        "ich habe das nicht verstanden",
+        "kannst du das wiederholen?",
+        "wie hast du das gemeint?"
+      ],
+      [
+        "meine Fadenkreuzplatzierung braucht Übung",
+        "ich arbeite an meinem Timing",
+        "jede Runde ist etwas anders"
+      ],
+      [
+        "ich habe noch {hp} HP",
+        "meine Gesundheit liegt bei {hp} HP",
+        "mit {hp} HP muss ich aufpassen"
+      ],
+      [
+        "ich führe mit {frags} Frags, versucht mich einzuholen",
+        "der erste Platz gehört mir gerade, {frags} Frags",
+        "ich führe die Tabelle an, haltet mit"
+      ],
+      [
+        "das Duell hat mich geärgert",
+        "ich bin frustriert und muss mich sammeln",
+        "dieser Fehler ärgert mich"
+      ],
+      [
+        "bei diesem Winkel bin ich nervös",
+        "der Kampf hat mich etwas erschreckt",
+        "diese Chancen gefallen mir nicht"
+      ],
+      [
+        "ich fühle mich diese Runde mutig",
+        "ich will ein größeres Risiko eingehen",
+        "ich versuche einen gewagten Spielzug"
+      ],
+      [
+        "ich spiele vorsichtig",
+        "ich brauche einen geduldigeren Ansatz",
+        "ich will zuerst jeden Winkel prüfen"
+      ],
+      [
+        "ich will die Spitze der Tabelle",
+        "Platz {rank} reicht mir nicht",
+        "ich jage den nächsten Frag"
+      ],
+      [
+        "versuchen wir einen Teamkollegen-Boost",
+        "ich brauche Hilfe auf diese Kante",
+        "wir können uns gegenseitig hochhelfen"
+      ]
+    ],
+    "ack": [
+      "kein Problem, wir starten neu",
+      "alles gut, weiter geht es",
+      "das passiert, konzentrieren wir uns auf den nächsten Zug"
+    ],
+    "plan": [
+      "wir könnten uns verteilen und neu sammeln",
+      "ich würde einen langsameren Ansatz versuchen",
+      "wechseln wir diese Runde die Route"
+    ]
+  }
+}

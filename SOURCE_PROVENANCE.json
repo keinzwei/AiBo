@@ -1,0 +1,40 @@
+{
+  "fork": "AiBo",
+  "version": "4.3.3",
+  "base_repository": "https://github.com/yapb/yapb/",
+  "base_commit": "7985904584a0755b216e17cc5de8c5fd28953895",
+  "submodules": {
+    "ext/linkage": "b2a9d9004fb11510b93ba1ef63841a1ed232b98f",
+    "ext/ystl": "560d89b16030f523ac39d768bdbcb2359bc27533",
+    "ext/ystl/ext/mbedtls/mbedtls": "a71051363b9fd73fe0b7805ac4355926dd35ec58"
+  },
+  "rbcc_format": "RBCC0003",
+  "human_navigation_format": "HCNAV001",
+  "personal_human_dataset_included": false,
+  "github_remote_modified": false,
+  "input_archive": "Source Code.zip",
+  "input_archive_sha256": "959b8a9d35bef42043587b991ef8f83b52f6e2a6b21870eca826162dff4c4b3c",
+  "learning_format": "HCLEARN1",
+  "learning_model": "local tabular Q-learning, demonstration action prior, opponent EMAs, team formation bandits",
+  "exploration_format": "HCEXPL01",
+  "dialogue_languages": 16,
+  "dialogue_fragments": 1440,
+  "profile_names": 42,
+  "release_label": "FINAL",
+  "final_memory_format": "HCFINAL1",
+  "aim_format": "HCAIM001",
+  "adaptive_aim": true,
+  "uploaded_configs": {
+    "autobuy.txt": "567b58586f6969da91d5d272d3217ff5b66ddede05c70773970ca80a9c0e6160",
+    "listenserver.cfg": "de3a309511aa8b0a26cbdc1b9b9041e9d7216da7e1b97c396b097e4359254cb6"
+  },
+  "dust2_graph_source": "https://raw.githubusercontent.com/yapb/graph/master/graph/de_dust2.graph",
+  "dust2_graph_sha256": "215f7fa0a08c55c95ad68a74d4c17f92960960fab4315598db84482e65a49a18",
+  "dust2_graph_license": "CC BY-SA 4.0",
+  "pro_profiles": 42,
+  "ranking_mapping": "verified historical annual career peaks, not an official skill formula",
+  "history_included": false,
+  "old_source_snapshots_included": false,
+  "aibo_project_credit": "K9_einzwei",
+  "aibo_github_owner": "keinzwei"
+}

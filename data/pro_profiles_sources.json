@@ -1,0 +1,395 @@
+{
+  "checked_date": "2026-10-26",
+  "profiles": [
+    {
+      "name": "NEO",
+      "weapon": "Rifle",
+      "rank": 1,
+      "year": 2011,
+      "power": 1.0,
+      "ranking_source": "https://www.hltv.org/news/8054/top-20-players-of-2011-neo-1",
+      "role_source": "https://www.hltv.org/stats/players/weapon/165/neo?csVersion=CSGO"
+    },
+    {
+      "name": "f0rest",
+      "weapon": "Rifle",
+      "rank": 2,
+      "year": 2013,
+      "power": 0.975,
+      "ranking_source": "https://www.hltv.org/news/11964/top-20-players-of-2013-f0rest-2",
+      "role_source": "https://www.hltv.org/stats/players/weapon/29/f0rest?csVersion=CSGO"
+    },
+    {
+      "name": "GeT_RiGhT",
+      "weapon": "Rifle",
+      "rank": 1,
+      "year": 2013,
+      "power": 1.0,
+      "ranking_source": "https://www.hltv.org/news/11895/top-20-players-of-2013-ranking",
+      "role_source": null
+    },
+    {
+      "name": "markeloff",
+      "weapon": "AWP",
+      "rank": 1,
+      "year": 2010,
+      "power": 1.0,
+      "ranking_source": "https://www.hltv.org/news/5888/top-20-players-of-2010-introduction",
+      "role_source": "https://www.hltv.org/news/6001/top-20-players-of-2010-markeloff-1"
+    },
+    {
+      "name": "trace",
+      "weapon": "Rifle",
+      "rank": 3,
+      "year": 2010,
+      "power": 0.95,
+      "ranking_source": "https://www.hltv.org/news/5888/top-20-players-of-2010-introduction",
+      "role_source": null
+    },
+    {
+      "name": "starix",
+      "weapon": "Rifle",
+      "rank": 4,
+      "year": 2010,
+      "power": 0.925,
+      "ranking_source": "https://www.hltv.org/news/5888/top-20-players-of-2010-introduction",
+      "role_source": null
+    },
+    {
+      "name": "Edward",
+      "weapon": "Rifle",
+      "rank": 5,
+      "year": 2010,
+      "power": 0.9,
+      "ranking_source": "https://www.hltv.org/news/5888/top-20-players-of-2010-introduction",
+      "role_source": null
+    },
+    {
+      "name": "zonic",
+      "weapon": "Rifle",
+      "rank": 8,
+      "year": 2010,
+      "power": 0.825,
+      "ranking_source": "https://www.hltv.org/news/5888/top-20-players-of-2010-introduction",
+      "role_source": null
+    },
+    {
+      "name": "moddii",
+      "weapon": "Rifle",
+      "rank": 9,
+      "year": 2010,
+      "power": 0.8,
+      "ranking_source": "https://www.hltv.org/news/5888/top-20-players-of-2010-introduction",
+      "role_source": null
+    },
+    {
+      "name": "Delpan",
+      "weapon": "AWP",
+      "rank": 9,
+      "year": 2011,
+      "power": 0.8,
+      "ranking_source": "https://www.hltv.org/news/7984/top-20-players-of-2011-introduction",
+      "role_source": "https://www.hltv.org/news/5938/top-20-players-of-2010-delpan-10"
+    },
+    {
+      "name": "TaZ",
+      "weapon": "Rifle",
+      "rank": 6,
+      "year": 2011,
+      "power": 0.875,
+      "ranking_source": "https://www.hltv.org/news/7984/top-20-players-of-2011-introduction",
+      "role_source": null
+    },
+    {
+      "name": "Friis",
+      "weapon": "AWP",
+      "rank": 7,
+      "year": 2011,
+      "power": 0.85,
+      "ranking_source": "https://www.hltv.org/news/7984/top-20-players-of-2011-introduction",
+      "role_source": "https://www.hltv.org/news/8020/top-20-players-of-2011-friis-7"
+    },
+    {
+      "name": "karrigan",
+      "weapon": "AWP",
+      "rank": 8,
+      "year": 2011,
+      "power": 0.825,
+      "ranking_source": "https://www.hltv.org/news/7984/top-20-players-of-2011-introduction",
+      "role_source": "https://www.hltv.org/news/8013/top-20-players-of-2011-karrigan-8"
+    },
+    {
+      "name": "Gux",
+      "weapon": "Rifle",
+      "rank": 10,
+      "year": 2011,
+      "power": 0.775,
+      "ranking_source": "https://www.hltv.org/news/7984/top-20-players-of-2011-introduction",
+      "role_source": null
+    },
+    {
+      "name": "shox",
+      "weapon": "Rifle",
+      "rank": 3,
+      "year": 2013,
+      "power": 0.95,
+      "ranking_source": "https://www.hltv.org/news/11895/top-20-players-of-2013-ranking",
+      "role_source": null
+    },
+    {
+      "name": "Dosia",
+      "weapon": "Rifle",
+      "rank": 4,
+      "year": 2013,
+      "power": 0.925,
+      "ranking_source": "https://www.hltv.org/news/11895/top-20-players-of-2013-ranking",
+      "role_source": null
+    },
+    {
+      "name": "NBK",
+      "weapon": "Rifle",
+      "rank": 5,
+      "year": 2013,
+      "power": 0.9,
+      "ranking_source": "https://www.hltv.org/news/11895/top-20-players-of-2013-ranking",
+      "role_source": null
+    },
+    {
+      "name": "Xizt",
+      "weapon": "Rifle",
+      "rank": 6,
+      "year": 2013,
+      "power": 0.875,
+      "ranking_source": "https://www.hltv.org/news/11895/top-20-players-of-2013-ranking",
+      "role_source": null
+    },
+    {
+      "name": "ScreaM",
+      "weapon": "Rifle",
+      "rank": 7,
+      "year": 2013,
+      "power": 0.85,
+      "ranking_source": "https://www.hltv.org/news/11895/top-20-players-of-2013-ranking",
+      "role_source": null
+    },
+    {
+      "name": "JW",
+      "weapon": "AWP",
+      "rank": 5,
+      "year": 2014,
+      "power": 0.9,
+      "ranking_source": "https://www.hltv.org/news/13903/top-20-players-of-2014-introduction",
+      "role_source": "https://www.hltv.org/news/13990/top-20-players-of-2014-jw-5"
+    },
+    {
+      "name": "Hiko",
+      "weapon": "Rifle",
+      "rank": 9,
+      "year": 2013,
+      "power": 0.8,
+      "ranking_source": "https://www.hltv.org/news/11895/top-20-players-of-2013-ranking",
+      "role_source": null
+    },
+    {
+      "name": "GuardiaN",
+      "weapon": "AWP",
+      "rank": 2,
+      "year": 2015,
+      "power": 0.975,
+      "ranking_source": "https://www.hltv.org/news/16848/top-20-players-of-2015-guardian-2",
+      "role_source": "https://www.hltv.org/news/11926/top-20-players-of-2013-guardian-10"
+    },
+    {
+      "name": "flusha",
+      "weapon": "Rifle",
+      "rank": 2,
+      "year": 2014,
+      "power": 0.975,
+      "ranking_source": "https://www.hltv.org/news/13903/top-20-players-of-2014-introduction",
+      "role_source": null
+    },
+    {
+      "name": "pasha",
+      "weapon": "AWP",
+      "rank": 3,
+      "year": 2014,
+      "power": 0.95,
+      "ranking_source": "https://www.hltv.org/news/13903/top-20-players-of-2014-introduction",
+      "role_source": "https://www.hltv.org/news/14001/top-20-players-of-2014-pasha-3"
+    },
+    {
+      "name": "Snax",
+      "weapon": "Rifle",
+      "rank": 4,
+      "year": 2014,
+      "power": 0.925,
+      "ranking_source": "https://www.hltv.org/news/13903/top-20-players-of-2014-introduction",
+      "role_source": null
+    },
+    {
+      "name": "kennyS",
+      "weapon": "AWP",
+      "rank": 6,
+      "year": 2014,
+      "power": 0.875,
+      "ranking_source": "https://www.hltv.org/news/13903/top-20-players-of-2014-introduction",
+      "role_source": "https://www.hltv.org/news/13985/top-20-players-of-2014-kennys-6"
+    },
+    {
+      "name": "KRiMZ",
+      "weapon": "Rifle",
+      "rank": 7,
+      "year": 2015,
+      "power": 0.85,
+      "ranking_source": "https://www.hltv.org/news/16800/top-20-players-of-2015-krimz-7",
+      "role_source": null
+    },
+    {
+      "name": "Happy",
+      "weapon": "Rifle",
+      "rank": 8,
+      "year": 2015,
+      "power": 0.825,
+      "ranking_source": "https://www.hltv.org/news/16785/top-20-players-of-2015-happy-8",
+      "role_source": null
+    },
+    {
+      "name": "BnTeT",
+      "weapon": "Rifle",
+      "rank": 0,
+      "year": 0,
+      "power": 0.5,
+      "ranking_source": null,
+      "role_source": "https://www.hltv.org/news/40214/bntet-i-think-that-im-still-capable-of-playing-internationally"
+    },
+    {
+      "name": "xccurate",
+      "weapon": "AWP",
+      "rank": 0,
+      "year": 0,
+      "power": 0.5,
+      "ranking_source": null,
+      "role_source": "https://www.hltv.org/news/23489/xccurate-maybe-for-now-ill-be-a-more-of-a-support-awper"
+    },
+    {
+      "name": "somebody",
+      "weapon": "Rifle",
+      "rank": 0,
+      "year": 0,
+      "power": 0.5,
+      "ranking_source": null,
+      "role_source": null
+    },
+    {
+      "name": "XigN",
+      "weapon": "Rifle",
+      "rank": 0,
+      "year": 0,
+      "power": 0.5,
+      "ranking_source": null,
+      "role_source": "https://www.hltv.org/stats/players/weapon/9172/xign?csVersion=CSGO"
+    },
+    {
+      "name": "Laz",
+      "weapon": "Rifle",
+      "rank": 0,
+      "year": 0,
+      "power": 0.5,
+      "ranking_source": null,
+      "role_source": null
+    },
+    {
+      "name": "ISSAA",
+      "weapon": "Rifle",
+      "rank": 0,
+      "year": 0,
+      "power": 0.5,
+      "ranking_source": null,
+      "role_source": null
+    },
+    {
+      "name": "BOROS",
+      "weapon": "Rifle",
+      "rank": 0,
+      "year": 0,
+      "power": 0.5,
+      "ranking_source": null,
+      "role_source": "https://www.hltv.org/news/43203/boros-re-signs-with-jijiehao-issaa-departs"
+    },
+    {
+      "name": "FalleN",
+      "weapon": "AWP",
+      "rank": 2,
+      "year": 2016,
+      "power": 0.975,
+      "ranking_source": "https://www.hltv.org/news/19655/top-20-players-of-2016-fallen-2",
+      "role_source": "https://www.hltv.org/news/19655/top-20-players-of-2016-fallen-2"
+    },
+    {
+      "name": "coldzera",
+      "weapon": "Rifle",
+      "rank": 1,
+      "year": 2016,
+      "power": 1.0,
+      "ranking_source": "https://www.hltv.org/news/19662/top-20-players-of-2016-coldzera-1",
+      "role_source": null
+    },
+    {
+      "name": "XANTARES",
+      "weapon": "Rifle",
+      "rank": 14,
+      "year": 2025,
+      "power": 0.675,
+      "ranking_source": "https://www.hltv.org/news/43524/top-20-players-of-2025-xantares-14",
+      "role_source": null
+    },
+    {
+      "name": "gob b",
+      "weapon": "Rifle",
+      "rank": 0,
+      "year": 0,
+      "power": 0.5,
+      "ranking_source": null,
+      "role_source": null
+    },
+    {
+      "name": "EliGE",
+      "weapon": "Rifle",
+      "rank": 4,
+      "year": 2019,
+      "power": 0.925,
+      "ranking_source": "https://www.hltv.org/news/28858/top-20-players-of-2019-elige-4",
+      "role_source": null
+    },
+    {
+      "name": "Stewie2K",
+      "weapon": "Rifle",
+      "rank": 0,
+      "year": 0,
+      "power": 0.5,
+      "ranking_source": null,
+      "role_source": null
+    },
+    {
+      "name": "sh1ro",
+      "weapon": "AWP",
+      "rank": 3,
+      "year": 2022,
+      "power": 0.95,
+      "ranking_source": "https://www.hltv.org/news/35379/top-20-players-of-2022-sh1ro-3",
+      "role_source": "https://www.hltv.org/news/33137/top-20-players-of-2021-sh1ro-4"
+    }
+  ],
+  "ranking_to_skill_formula_is_custom": true,
+  "annual_sources": {
+    "2010": "https://www.hltv.org/news/5888/top-20-players-of-2010-introduction",
+    "2011": "https://www.hltv.org/news/7984/top-20-players-of-2011-introduction",
+    "2013": "https://www.hltv.org/news/11895/top-20-players-of-2013-ranking",
+    "2014": "https://www.hltv.org/news/13903/top-20-players-of-2014-introduction",
+    "2015": "https://www.hltv.org/news/16700/top-20-players-of-2015-introduction",
+    "2016": "https://www.hltv.org/news/19662/top-20-players-of-2016-coldzera-1",
+    "2019": "https://www.hltv.org/news/28858/top-20-players-of-2019-elige-4",
+    "2022": "https://www.hltv.org/news/35379/top-20-players-of-2022-sh1ro-3",
+    "2025": "https://www.hltv.org/news/43524/top-20-players-of-2025-xantares-14"
+  }
+}
