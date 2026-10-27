@@ -23,7 +23,7 @@ jobs:
           python3 - <<'PYTHON'
           import hashlib, os, pathlib, subprocess, zipfile
           archive = pathlib.Path(os.environ["ARCHIVE_PATH"])
-          expected = "82a73fca759386a09f822738c85d4c8d4f1ddadc83ea16d6b1a5b696c548d5eb"
+          expected = "96f5f59d879cb081bed0916062a6b8c81fe5a4c57763c5385fee8488f37acfeb"
           assert hashlib.sha256(archive.read_bytes()).hexdigest() == expected, "Archive checksum mismatch"
           root = pathlib.Path.cwd()
           imported = []
