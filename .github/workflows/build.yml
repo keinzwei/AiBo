@@ -1,0 +1,38 @@
+name: AiBo build
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Configure native fake-engine tests
+        run: cmake -S . -B build/test -DCMAKE_BUILD_TYPE=Debug -DAIBO_NATIVE=ON -DAIBO_64BIT=ON -DAIBO_BUILD_TESTS=ON -DAIBO_WITH_TLS=OFF -DAIBO_WITH_AMXX=OFF -DAIBO_LTO=OFF
+      - name: Build and test
+        run: |
+          cmake --build build/test --parallel 4
+          ctest --test-dir build/test --output-on-failure --timeout 60 --parallel 2
+  windows:
+    needs: regression
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v6
+      - name: Configure Windows x86
+        run: cmake -S . -B build/windows -A Win32 -DAIBO_WITH_TLS=ON -DAIBO_WITH_AMXX=OFF -DAIBO_LTO=OFF
+      - name: Build Windows x86
+        run: cmake --build build/windows --config Release --parallel 4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+      - name: Verify engine DLL contract
+        run: python tools/check_dll.py --arch i386 build/windows/Release/AiBo.dll
+      - uses: actions/upload-artifact@v7
+        with:
+          name: AiBo-4.3.3-Windows-x86
+          path: |
+            build/windows/Release/AiBo.dll
+            cfg/
