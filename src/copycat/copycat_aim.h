@@ -1,4 +1,4 @@
-// Adaptive, fallible shooting policies. GPL-2.0-or-later.
+// Adaptive, fallible shooting policies & Pro Primary/Secondary Weapon Switching. GPL-2.0-or-later.
 #pragma once
 #include "copycat_core.h"
 #include <map>
@@ -73,7 +73,81 @@ public:
   unsigned fired () const {
     return fired_;
   }
+  float awpUntil () const {
+    return awpUntil_;
+  }
 };
+
+enum class SwitchReason : uint8_t {
+  None = 0,
+  AwpPostShotQuickSwitch,       // Pro AWPer fast switch from AWP to Deagle/Secondary after firing
+  AwpCloseQuartersDefense,      // Close-range enemy threat while holding AWP -> switch to Deagle/Secondary
+  AwpTravelWithDeagle,          // Pro AWPer walking/running to spot with Deagle for light & fast movement (250 u/s)
+  RifleEmptyOrLowClipCombat,    // AK-47/M4A1 empty or critically low magazine mid-fight -> switch to Deagle/Secondary
+  RifleSprayRecoilFinisher,     // AK-47/M4A1 post-burst/spray tactical switch to Deagle/Secondary
+  ReloadInterruptedByEnemy,     // Primary reload interrupted by enemy sight -> cancel reload & draw Secondary
+  ReturnToPrimary               // Arrived at spot / engagement cleared / quick-switch complete -> return to Primary (AWP/AK-47/M4A1)
+};
+
+struct WeaponSwitchDecision {
+  bool shouldSwitch {};
+  unsigned targetWeapon {};     // 18=AWP, 28=AK47, 22=M4A1, 26=Deagle, 16=USP, 17=Glock18
+  SwitchReason reason { SwitchReason::None };
+  bool cancelReload {};
+  bool holdingSecondary {};
+};
+
+class ProWeaponSwitchController final {
+  float switchAt_ { -1.0f };
+  float returnAt_ { -1.0f };
+  float drawReadyAt_ { -1.0f };
+  float lastPrimaryShot_ { -100.0f };
+  unsigned lastPrimaryWeapon_ {};
+  unsigned activeSecondary_ {};
+  SwitchReason activeReason_ { SwitchReason::None };
+  bool holdingSecondary_ {};
+  uint32_t awpToSecondarySwitches_ {};
+  uint32_t rifleToSecondarySwitches_ {};
+  uint32_t returnToPrimarySwitches_ {};
+
+public:
+  static constexpr unsigned kWeaponUSP     = 16u;
+  static constexpr unsigned kWeaponGlock18 = 17u;
+  static constexpr unsigned kWeaponAWP     = 18u;
+  static constexpr unsigned kWeaponM4A1    = 22u;
+  static constexpr unsigned kWeaponDeagle  = 26u;
+  static constexpr unsigned kWeaponAK47    = 28u;
+
+  void reset ();
+  static constexpr bool isPrimaryWeapon (unsigned w) {
+    return w == kWeaponAWP || w == kWeaponAK47 || w == kWeaponM4A1;
+  }
+  static constexpr bool isSecondaryWeapon (unsigned w) {
+    return w == kWeaponDeagle || w == kWeaponUSP || w == kWeaponGlock18;
+  }
+  static unsigned selectBestSecondary (uint32_t weaponsMask);
+  static unsigned selectBestPrimary (uint32_t weaponsMask);
+
+  void onShotFired (
+    float now, unsigned w, int remainingPrimaryClip, unsigned firedInBurst,
+    bool enemyVisible, float enemyDistance, AimStyle style);
+
+  WeaponSwitchDecision evaluate (
+    float now, unsigned currentWeapon, uint32_t weaponsMask,
+    int primaryClip, int secondaryClip, bool isReloading,
+    bool enemyVisible, float enemyDistance, bool isScoped,
+    unsigned firedInBurst, AimStyle style, bool isTravelingToSpot = false);
+
+  bool holdingSecondary () const { return holdingSecondary_; }
+  float drawReadyAt () const { return drawReadyAt_; }
+  float switchAt () const { return switchAt_; }
+  float returnAt () const { return returnAt_; }
+  SwitchReason activeReason () const { return activeReason_; }
+  uint32_t awpToSecondarySwitches () const { return awpToSecondarySwitches_; }
+  uint32_t rifleToSecondarySwitches () const { return rifleToSecondarySwitches_; }
+  uint32_t returnToPrimarySwitches () const { return returnToPrimarySwitches_; }
+};
+
 struct PenetrationBudget {
   float power {}, range {};
   unsigned walls {};

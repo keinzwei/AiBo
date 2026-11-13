@@ -1,4 +1,4 @@
-// YaPB Human Copycat 4.2.7. SPDX-License-Identifier: GPL-2.0-or-later
+// YaPB Human Copycat 4.3.5 + Level 1 Episodic & Tactical Dialogue. SPDX-License-Identifier: GPL-2.0-or-later
 #include <aibo.h>
 #include <initializer_list>
 #include "copycat/copycat_dialogue.h"
@@ -49,6 +49,31 @@ rbcc::DialogueContext DialogueContext (const Bot &bot) {
   c.exploring = HumanExplore::Active (bot); c.planted = game_state.IsBombPlanted ();
   c.topFragger = HumanArena::Top (bot); c.boosting = HumanArena::Boosting (bot);
   c.mood = HumanArena::Mood (bot); c.rank = HumanArena::Rank (bot); c.frags = static_cast<int> (bot.pev->frags);
+  c.streak = HumanArena::Streak (bot);
+  const char *strat = HumanArena::Strategy (bot);
+  if (strat && *strat) c.strategy = strat;
+  const char *dir = HumanArena::Directive (bot);
+  if (dir && *dir) c.directive = dir;
+  const char *role = HumanArena::Role (bot);
+  if (role && *role) c.role = role;
+  ystl::String opp {}, area {};
+  HumanArena::EpisodicContext (bot, opp, area, c.revenge, c.headshot);
+  if (!opp.empty ()) c.opponent.assign (opp.chars (), opp.size ());
+  if (!area.empty ()) c.area.assign (area.chars (), area.size ());
+
+  int allies = 0, enemies = 0;
+  for (int i = 0; i < std::min (game.MaxClients (), kGameMaxPlayers); ++i) {
+    auto e = game.PlayerOfIndex (i);
+    if (!e || e->free || !(e->v.flags & FL_CLIENT) || e->v.deadflag != DEAD_NO || e->v.health <= 0)
+      continue;
+    const auto t = game.GetPlayerTeam (e);
+    if (t == bot.team_) ++allies;
+    else if (t == Team::CT || t == Team::Terrorist) ++enemies;
+  }
+  c.aliveAllies = std::max (1, allies);
+  c.aliveEnemies = enemies;
+  c.clutch = (bot.is_alive_ && allies == 1 && enemies >= 2);
+
   switch (bot.current_weapon_) {
   case Weapon::AK47: c.weapon = "AK-47"; break;
   case Weapon::M4A1: c.weapon = "M4A1"; break;
@@ -65,6 +90,7 @@ rbcc::DialogueContext DialogueContext (const Bot &bot) {
 bool ModernDialogue (Bot &bot, Chat event, ystl::String &out, ystl::StringRef incoming,
     bool reply = false, rbcc::DialogueIntent replying = rbcc::DialogueIntent::Unknown) {
   auto &s = DialogueState (bot); auto c = DialogueContext (bot); c.reply = reply || !incoming.empty ();
+  if (!incoming.empty ()) c.incoming.assign (incoming.chars (), incoming.size ());
   auto intent = rbcc::DialogueIntent::Banter;
   if (reply) intent = replying;
   else if (!incoming.empty ()) intent = rbcc::parseIntent (std::string (incoming.chars (), incoming.size ()));
@@ -118,18 +144,15 @@ void HumanChat::Reset () {
 }
 
 const char *HumanChat::Language (const Bot &bot) {
-  const auto configured = cv_human_chat_language.As<ystl::StringRef> ();
-  if (rbcc::supportedLanguage (std::string (configured.chars (), configured.size ()))) return cv_human_chat_language.ptr->string;
-  return rbcc::profileLanguage (bot.pev->netname.chars ());
+  (void)bot;
+  return "en";
 }
 void HumanChat::NewRound () { conversation = Conversation {}; }
 
 bool HumanChat::Generate (Bot &bot, Chat event, ystl::String &out, ystl::StringRef incoming) {
   out.clear ();
   if (!cv_chat || !cv_human_generative_chat) return false;
-  if (cv_human_chat_catalogue || cv_human_chat_language.As<ystl::StringRef> () == "profile" ||
-      cv_human_chat_language.As<ystl::StringRef> () == "mix" || cv_human_chat_language.As<ystl::StringRef> () == "auto")
-    return ModernDialogue (bot,event,out,incoming);
+  return ModernDialogue (bot, event, out, incoming);
   ystl::String text (incoming);
   text.lowercase ();
   enum class Intent { Greeting, Praise, Apology, Utility, Economy, Equipment, Unknown, Banter, Kill, Dead, Plant };
@@ -310,8 +333,6 @@ void HumanChat::Poll (Bot &bot) {
   }
   if (game.Time () < bot.pending_generated_time_ || game.Time () < chat_global_next) return;
   if (bot.is_alive_ && (bot.has_progress_bar_ || bot.is_using_grenade_ || has_flag (bot.states_, Sense::SeeingEnemy))) return;
-  // Direct delivery avoids the old single mutable chat buffer queue and prevents
-  // a generated bot line from starting another bot-to-bot reply cascade.
   bot.SendToChatDirect (bot.pending_generated_chat_, bot.pending_generated_team_);
   if (cv_human_chat_catalogue) {
     const auto &s = DialogueState (bot);
@@ -328,9 +349,9 @@ void HumanChat::Poll (Bot &bot) {
   chat_global_next = game.Time () + (HumanArena::Enabled () ? cv_final_chat_gap.As<float> () : 3.0f);
 }
 void HumanChat::Status () {
-  game.Print ("[Dialogue] catalogue=%d languages=%u fragments=%u generated=%u replies=%u conversation=%d mode=%s",
-    cv_human_chat_catalogue.As<int> (),rbcc::dialogueLanguageCount (),rbcc::dialogueFragmentCount (),generated_lines,conversation_replies,
-    cv_human_chat_conversation.As<int> (),cv_human_chat_language.ptr->string);
+  game.Print ("[Dialogue Level-5 Generative English LLM] vocab=%zu trained=%u online_updates=%u generated_lines=%u tokens=%u replies=%u",
+    rbcc::englishLLM ().vocabSize (), rbcc::englishLLM ().trainedSentences (), rbcc::englishLLM ().onlineUpdates (),
+    generated_lines, rbcc::englishLLM ().generatedTokens (), conversation_replies);
   for (const auto &b : bots) game.Print ("[Dialogue] %s profile=%s language=%s",b.pev->netname.chars (),rbcc::profileCountry (b.pev->netname.chars ()),Language (b));
 }
 #if defined(YSTL_TESTS)

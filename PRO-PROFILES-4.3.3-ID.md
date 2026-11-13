@@ -1,4 +1,4 @@
-# Profil senjata dan bobot HLTV — AiBo 4.3.3
+# Profil senjata dan bobot HLTV — AiBo 4.3.5
 
 Tabel berikut adalah data yang benar-benar dikompilasi ke DLL. Peringkat merujuk
 prestasi tahunan terbaik yang terverifikasi pada acuan ini, bukan ranking pemain

@@ -19,9 +19,15 @@ namespace bot {
 #if defined(YSTL_TESTS)
 inline constexpr const char *kAimSkillDefault = "70";
 inline constexpr const char *kAimLevelDefault = "-1";
+inline constexpr const char *kCrouchHopDefault = "1";
+inline constexpr const char *kExplorePercentDefault = "40";
+inline constexpr const char *kExploreProbesDefault = "16";
 #else
 inline constexpr const char *kAimSkillDefault = "100";
 inline constexpr const char *kAimLevelDefault = "100";
+inline constexpr const char *kCrouchHopDefault = "0";
+inline constexpr const char *kExplorePercentDefault = "75";
+inline constexpr const char *kExploreProbesDefault = "12";
 #endif
 
 // The fork controls aim independently of native tactical difficulty.
@@ -43,8 +49,8 @@ inline ConVar cv_human_aim_level ("human_aim_level", kAimLevelDefault, "-1: adap
 inline ConVar cv_human_aim_techniques ("human_aim_techniques", "1", "Observed-shot tap/burst/spray discipline, counter-steering and scoped AWP timing.");
 inline ConVar cv_human_aim_wallbang ("human_aim_wallbang", "1", "Allows short, geometry-checked bursts at recent seen/heard positions; never tracks hidden enemy coordinates.");
 inline ConVar cv_human_aim_preaim ("human_aim_preaim", "1", "Head-height preaim using navigation and frozen legitimate contact memory.");
-inline ConVar cv_human_aim_quickswitch ("human_aim_quickswitch", "1", "AWP quick switch after a confirmed shot; ordinary weapon commands, engine cooldown retained.");
-inline ConVar cv_human_aim_crouchhop ("human_aim_crouchhop", "1", "Occasional geometry-checked crouch hops; no speed or sound suppression.");
+inline ConVar cv_human_aim_quickswitch ("human_aim_quickswitch", "1", "Pro primary-to-secondary weapon switching for both AWP (instant switch to Deagle/secondary) and AK-47/M4A1 bots; ordinary weapon commands, engine cooldown retained.");
+inline ConVar cv_human_aim_crouchhop ("human_aim_crouchhop", kCrouchHopDefault, "Occasional geometry-checked crouch hops; disabled by default during normal walking.");
 inline ConVar cv_human_aim_save ("human_aim_save", "1", "Persists bounded human skill evidence and bot combat practice in map/physics-bound HCAIM001 files.");
 inline ConVar cv_human_objective_smoke ("human_objective_smoke", kHumanDefault, "Requests a real protective smoke before plant/defuse, preferring a nearby teammate; urgent defuses never wait.");
 inline ConVar cv_human_teamwork ("human_teamwork", "80", "Probability of acting on a teammate callout; independently controls cooperation.", true, 0.0f, 100.0f);
@@ -57,32 +63,36 @@ inline ConVar cv_human_spread_seconds ("human_spread_seconds", "75", "Opening st
 inline ConVar cv_human_waypoints ("human_waypoints", "1", "Learns and traverses an additive human route graph without changing native .graph files.");
 inline ConVar cv_human_route_variety ("human_route_variety", "1", "Penalizes recently repeated routes and changes route preferences each round.");
 inline ConVar cv_human_hide ("human_hide", "1", "Uses learned human hiding spots when the objective permits.");
-inline ConVar cv_human_roster_lock ("human_roster_lock", kHumanDefault, "Use only the built-in 28 HLTV names, including saved and explicitly named bots.");
-inline ConVar cv_human_awp_percent ("human_awp_percent", "25", "Target AWP share per bot team, capped to preserve a rifle majority; respects carried AWPs and rotates buyers by round.", true, 0.0f, 100.0f);
-inline ConVar cv_human_deagle_percent ("human_deagle_percent", "25", "Chance to upgrade a default pistol to Deagle when affordable, after reserving flash money.", true, 0.0f, 100.0f);
+inline ConVar cv_human_roster_lock ("human_roster_lock", "0", "Use only the built-in 28 HLTV names; 0 enables the Generative CS 1.6 Nickname Bot Generator (Historical + Steam + Non-Steam + Continuous Player Monitoring).");
+inline ConVar cv_human_awp_percent ("human_awp_percent", "50", "Target AWP share per bot team (50% AWP, 50% AK-47/M4A1); respects carried AWPs and rotates buyers by round.", true, 0.0f, 100.0f);
+inline ConVar cv_human_deagle_percent ("human_deagle_percent", "100", "Chance to upgrade a default pistol to Deagle when affordable so AWP and AK-47/M4A1 bots always have pro secondary switching.", true, 0.0f, 100.0f);
 inline ConVar cv_human_flash_interval ("human_flash_interval", "1.6", "Seconds between contextual utility decisions; actual throws require safe trajectories.", true, 0.8f, 8.0f);
 inline ConVar cv_human_generative_chat ("human_generative_chat", "1", "Local contextual grammar chat, independent of static chat banks. No external LLM/API.");
 #if defined(YSTL_TESTS)
-inline constexpr const char *kChatLanguageDefault = "id";
+inline constexpr const char *kChatLanguageDefault = "en";
 #else
-inline constexpr const char *kChatLanguageDefault = "profile";
+inline constexpr const char *kChatLanguageDefault = "en";
 #endif
-inline ConVar cv_human_chat_language ("human_chat_language", kChatLanguageDefault, "profile: each bot speaks its own profile language; or force en,id,sv,da,pl,fr,ru,uk,sk,pt,tr,ar,zh,ko,ja,de.", false);
+inline ConVar cv_human_chat_language ("human_chat_language", kChatLanguageDefault, "en: Generative English LLM chat (default); or profile/id/sv/da/pl/fr/ru/uk/sk/pt/tr/ar/zh/ko/ja/de.", false);
 inline ConVar cv_human_chat_catalogue ("human_chat_catalogue", kHumanDefault, "Expanded multilingual procedural dialogue, current state and topic memory.");
 inline ConVar cv_human_chat_conversation ("human_chat_conversation", kHumanDefault, "Allows one paced cross-bot response to an actual ambient message; no recursive reply chain.");
 inline ConVar cv_human_international_roster ("human_international_roster", kHumanDefault, "Adds Asian, Middle Eastern, Brazilian and international profiles to the classic roster.");
-inline ConVar cv_explore ("explore", kHumanDefault, "Discovers and walks safe geometry beyond native GRAPH and human demonstrations.");
-inline ConVar cv_explore_percent ("explore_percent", "40", "Rotating scout percentage per team; objective carriers are excluded and teammates remain on objectives.", true, 0.0f, 100.0f);
-inline ConVar cv_explore_probes ("explore_probes", "16", "Maximum geometry probe attempts per 50ms scan, shared across all bots, with a 2ms scan budget.", true, 1.0f, 64.0f);
+inline ConVar cv_explore ("explore", kHumanDefault, "Discovers and walks safe geometry and hiding spots beyond native GRAPH and human demonstrations.");
+inline ConVar cv_explore_percent ("explore_percent", kExplorePercentDefault, "Rotating scout percentage per team; objective carriers are excluded and teammates remain on objectives.", true, 0.0f, 100.0f);
+inline ConVar cv_explore_probes ("explore_probes", kExploreProbesDefault, "Maximum geometry probe attempts per 50ms scan, shared across all bots, with a 2ms scan budget.", true, 1.0f, 64.0f);
 inline ConVar cv_explore_save ("explore_save", "1", "Persists the independently discovered navigation overlay and per-team visit history.");
 inline ConVar cv_final_brain ("final_brain", kHumanDefault, "FINAL autonomous strategy rotation, score ambition and bounded personality state.");
 inline ConVar cv_final_variety ("final_variety", "1", "Persistent recent destination embargo and anti-repeat camps; mandatory routes and objectives remain possible.");
 inline ConVar cv_final_emotions ("final_emotions", "1", "Simulates confidence, frustration, fear, risk and ambition using actual gameplay events and scores.");
 inline ConVar cv_final_boost ("final_boost", "1", "Attempts cooperative physical boosts onto geometry-verified ledges; requires real player collision.");
 inline ConVar cv_final_memory ("final_memory", "1", "Saves per-profile place and strategy memory in map/physics-bound HCFINAL1 files.");
-inline ConVar cv_final_lobby ("final_lobby", kHumanDefault, "Paces bot arrivals/departures and enforces at most 31 bots while reserving total human capacity.");
-inline ConVar cv_final_join_min ("final_join_min", "0.5", "Minimum delay between simulated bot arrivals.", true, 0.3f, 30.0f);
-inline ConVar cv_final_join_max ("final_join_max", "2.0", "Maximum delay between simulated bot arrivals.", true, 0.5f, 60.0f);
+inline ConVar cv_final_lobby ("final_lobby", kHumanDefault, "Paces bot arrivals/departures and enables Internet Mode dynamic join/leave simulation (10-30s interval, Max 21 bots).");
+inline ConVar cv_final_join_min ("final_join_min", "10.0", "Minimum delay in seconds between simulated Internet Mode bot arrivals.", true, 0.05f, 300.0f);
+inline ConVar cv_final_join_max ("final_join_max", "30.0", "Maximum delay in seconds between simulated Internet Mode bot arrivals.", true, 0.1f, 600.0f);
+inline ConVar cv_internet_mode ("internet_mode", kHumanDefault, "Internet Mode: simulates live online player traffic by dynamically regulating bots joining and leaving the server (10-30s interval, Max 21 bots).");
+inline ConVar cv_internet_min_interval ("internet_min_interval", "10.0", "Minimum interval in seconds for Internet Mode bot join/leave events.", true, 1.0f, 300.0f);
+inline ConVar cv_internet_max_interval ("internet_max_interval", "30.0", "Maximum interval in seconds for Internet Mode bot join/leave events.", true, 2.0f, 600.0f);
+inline ConVar cv_internet_max_bots ("internet_max_bots", "21", "Maximum number of bots in Internet Mode (default 21).", true, 1.0f, 21.0f);
 inline ConVar cv_final_chat_gap ("final_chat_gap", "1.8", "Global message gap with FINAL enabled, including multilingual replies.", true, 1.0f, 10.0f);
 inline ConVar cv_human_chat_interval ("human_chat_interval", "12", "Minimum per-bot generated chat interval, plus typing delay and jitter.", true, 5.0f, 90.0f);
 inline ConVar cv_human_movement ("human_movement", "1", "Adds guarded counter-strafing, brief crouch peeks and double-duck inputs; no physics writes.");
@@ -94,6 +104,10 @@ inline ConVar cv_learning_lifelong ("learning_lifelong", "1", "Loads and atomica
 inline ConVar cv_learning_adaptation ("learning_adaptation", "1", "Tracks recent versus long-term patterns using visible opponents only.");
 inline ConVar cv_learning_multiagent ("learning_multiagent", "1", "Learns coordinated formations and shared round rewards. Combat Q policies are shared within each team.");
 inline ConVar cv_learning_exploration ("learning_exploration", "6", "Percent exploration among currently safe movement actions and team tactics.", true, 0.0f, 30.0f);
+inline ConVar cv_learning_level2 ("learning_level2", kHumanDefault, "Enables Level 2 Hierarchical RL, Graph Attention, Diffusion/Attention Trajectory Policy and Async Tactical Commander.");
+inline ConVar cv_learning_level4 ("learning_level4", kHumanDefault, "Enables Level 4 Open-Ended Self-Evolving Agent (~99% Autonomous): Latent World Model 3-step Rollouts, RND Intrinsic Curiosity, Evolving Skill Library & Self-Generated Curriculum.");
+inline ConVar cv_learning_level5 ("learning_level5", kHumanDefault, "Enables Level 5 Theoretical Apex (~99.9% Autonomous): Self-Modifying ABCD Hebbian Plasticity, Structural Synaptic Neurogenesis/Pruning, Liquid Recurrent Working Memory & Inter-Bot Population Neuroevolution.");
+inline ConVar cv_single_dll_mode ("single_dll_mode", kHumanDefault, "Level 5 Single-DLL Self-Bootstrapping Mode: requires only AiBo.dll at install time and automatically creates directories/files on disk to persist and grow lifelong curriculum, skills, synapses, DNA, and map graphs.");
 
 inline ConVar cv_debug ("debug", "0", "Enables or disables useful messages about bot states. Not required for end users.", true, 0.0f, 4.0f);
 inline ConVar cv_debug_goal ("debug_goal", "-1", "Forces all alive bots to build a path and go to the graph node specified here.", true, -1.0f, kMaxNodes);
@@ -126,11 +140,11 @@ inline ConVar cv_autovacate ("autovacate", "1", "Kicks bots to automatically mak
 inline ConVar cv_autovacate_keep_slots ("autovacate_keep_slots", "1", "How many slots the autovacate feature should keep for human players.", true, 1.0f, 8.0f);
 inline ConVar cv_kick_after_player_connect ("kick_after_player_connect", "1", "Kicks the bot immediately when a human player joins the server (aibo_autovacate must be enabled).");
 #if defined(YSTL_TESTS)
-inline constexpr const char *kQuotaDefault = "9";
+inline constexpr const char *kQuotaDefault = "21";
 #else
-inline constexpr const char *kQuotaDefault = "31";
+inline constexpr const char *kQuotaDefault = "21";
 #endif
-inline ConVar cv_quota ("quota", kQuotaDefault, "Specifies the number of bots to be added to the game.", true, 0.0f, static_cast<float> (kGameMaxPlayers));
+inline ConVar cv_quota ("quota", kQuotaDefault, "Specifies the number of bots (Internet Mode default: Max 21 bots; dynamically regulates bots joining and leaving every 10-30s).", true, 0.0f, 21.0f);
 inline ConVar cv_quota_mode ("quota_mode", "normal", "Specifies the type of quota.\nAllowed values: 'normal', 'fill', and 'match'.\nIf 'fill', the server will adjust bots to keep N players in the game.\nIf 'match', the server will maintain a certain number of bots relative to humans.", false);
 inline ConVar cv_quota_match ("quota_match", "0", "Number of players to match if aibo_quota_mode is set to 'match'.", true, 0.0f, static_cast<float> (kGameMaxPlayers));
 inline ConVar cv_think_fps ("think_fps", "40.0", "Specifies how many times per second the bot code will run.", true, 10.0f, 90.0f);
@@ -148,27 +162,27 @@ inline ConVar cv_difficulty_auto ("difficulty_auto", "0", "Allows each bot to ba
 inline ConVar cv_difficulty_auto_balance_interval ("difficulty_auto_balance_interval", "30", "Interval at which bots will balance their difficulty.", true, 30.0f, 240.0f);
 inline ConVar cv_difficulty_lock ("difficulty_lock", "1", "Keeps the difficulty of manually added bots fixed, ignoring aibo_difficulty and aibo_difficulty_auto changes.", true, 0.0f, 1.0f);
 inline ConVar cv_show_avatars ("show_avatars", "0", "Enables or disables displaying bot avatars in front of their names in the scoreboard. Note that currently you can only see avatars of your teammates.", true, 0.0f, 1.0f);
-inline ConVar cv_show_latency ("show_latency", "0", "Enables latency display in the scoreboard.\nAllowed values: '0', '1', '2'.\nIf '0', there is nothing displayed.\nIf '1', there is a 'BOT' string.\nIf '2', fake ping is displayed.", true, 0.0f, 2.0f);
+inline ConVar cv_show_latency ("show_latency", "2", "Enables latency display in the scoreboard.\nAllowed values: '0', '1', '2'.\nIf '0', there is nothing displayed.\nIf '1', there is a 'BOT' string.\nIf '2', fake ping is displayed.", true, 0.0f, 2.0f);
 inline ConVar cv_save_bots ("save_bots", "1", "Allows saving bot data upon changelevel, so bots will be restored after a map change.\nAllowed values: '0', '1', '2'.\nIf '0', nothing is saved.\nIf '1', only quota is saved.\nIf '2', full bot data is saved.", true, 0.0f, 2.0f);
 inline ConVar cv_botskin_t ("botskin_t", "0", "Specifies the bot's wanted skin for the Terrorist team.", true, 0.0f, 5.0f);
 inline ConVar cv_botskin_ct ("botskin_ct", "0", "Specifies the bot's wanted skin for the CT team.", true, 0.0f, 5.0f);
 inline ConVar cv_preferred_personality ("preferred_personality", "none", "Sets the default personality when creating bots with quota management.\nAllowed values: 'none', 'normal', 'careful', 'rusher'.\nIf 'none' is set, random personality is chosen.", false);
 inline ConVar cv_language ("language", "en", "Specifies the language for bot messages and menus.", false);
 inline ConVar cv_rotate_bots ("rotate_bots", kHumanDefault, "Randomly disconnects and connects bots, simulating players joining/quitting.");
-inline ConVar cv_rotate_stay_min ("rotate_stay_min", "360.0", "Specifies the minimum amount of seconds a bot stays connected, if rotation is active.", true, 120.0f, 7200.0f);
-inline ConVar cv_rotate_stay_max ("rotate_stay_max", "3600.0", "Specifies the maximum amount of seconds a bot stays connected, if rotation is active.", true, 1800.0f, 14400.0f);
-inline ConVar cv_restricted_weapons ("restricted_weapons", "", "", false);
+inline ConVar cv_rotate_stay_min ("rotate_stay_min", "10.0", "Specifies the minimum amount of seconds a bot stays connected in Internet Mode (default 10s).", true, 5.0f, 7200.0f);
+inline ConVar cv_rotate_stay_max ("rotate_stay_max", "30.0", "Specifies the maximum amount of seconds a bot stays connected in Internet Mode (default 30s).", true, 10.0f, 14400.0f);
+inline ConVar cv_restricted_weapons ("restricted_weapons", "p228;elite;fiveseven;m3;xm1014;mp5;tmp;p90;mac10;ump45;sg552;galil;famas;aug;scout;g3sg1;sg550;m249;shield", "", false);
 inline ConVar cv_fun_mode ("fun_mode", "imsober", "Enables classic podbot fun modes for everyone on the server.\nAllowed values: 'imsober', 'off', 'tronisback', 'itsnewyear', 'imhaunted', 'itstoodark', 'stonedagain', 'imonmars'.", false);
 
 // support
-inline ConVar cv_display_welcome_text ("display_welcome_text", "1", "Enables or disables showing a welcome message to the host entity on game start.");
+inline ConVar cv_display_welcome_text ("display_welcome_text", "0", "Enables or disables showing a welcome message to the host entity on game start.");
 inline ConVar cv_enable_query_hook ("enable_query_hook", "0", "Enables or disables fake server query responses, which show bots as real players in the server browser.");
 inline ConVar cv_enable_fake_steamids ("enable_fake_steamids", "0", "Allows or disallows bots to return a fake Steam ID.");
 inline ConVar cv_smoke_grenade_checks ("smoke_grenade_checks", "2", "Affects the bot's vision by smoke clouds.", true, 0.0f, 2.0f);
 inline ConVar cv_smoke_grenade_radius ("smoke_grenade_radius", "240", "Radius to check for smoke clouds around a detonated grenade.", true, 32.0f, 320.0f);
 
 // combat
-inline ConVar cv_shoots_thru_walls ("shoots_thru_walls", "4", "Specifies whether bots are able to fire at enemies behind the wall, if they hear or suspect them.", true, 0.0f, 4.0f);
+inline ConVar cv_shoots_thru_walls ("shoots_thru_walls", "0", "Specifies whether bots are able to fire at enemies behind the wall, if they hear or suspect them.", true, 0.0f, 4.0f);
 inline ConVar cv_ignore_enemies ("ignore_enemies", "0", "Enables or disables searching the world for enemies.");
 inline ConVar cv_check_enemy_rendering ("check_enemy_rendering", "0", "Enables or disables checking enemy rendering flags. Useful for some mods.");
 inline ConVar cv_check_enemy_invincibility ("check_enemy_invincibility", "0", "Enables or disables checking enemy invincibility. Useful for some mods.");
@@ -188,15 +202,15 @@ inline ConVar cv_walking_allowed ("walking_allowed", "1", "Specifies whether bot
 inline ConVar cv_camping_allowed ("camping_allowed", "1", "Allows or disallows bots to camp. Doesn't affect bomb/hostage defending tasks.");
 inline ConVar cv_camping_time_min ("camping_time_min", "15.0", "Lower bound of time from which the time for camping is calculated.", true, 5.0f, 90.0f);
 inline ConVar cv_camping_time_max ("camping_time_max", "45.0", "Upper bound of time until which the time for camping is calculated.", true, 15.0f, 120.0f);
-inline ConVar cv_random_knife_attacks ("random_knife_attacks", "1", "Allows or disallows the ability for random knife attacks when the bot is rushing and no enemy is nearby.");
+inline ConVar cv_random_knife_attacks ("random_knife_attacks", "0", "Allows or disallows the ability for random knife attacks when the bot is rushing and no enemy is nearby.");
 
 // graph
 inline ConVar cv_graph_fixcamp ("graph_fixcamp", "0", "Specifies whether the bot should not 'fix' camp directions of camp waypoints when loading the old PWF format.");
-inline ConVar cv_graph_url ("graph_url", "@github", "Specifies the base URL from which bots download a missing graph. The 'graph/<map>.graph' path is appended automatically. Set to empty to disable downloads.\nAllowed values: '@github', '@russia', '@http', or any full base URL.\nIf '@github', CDN raw over https (unavailable on builds without TLS).\nIf '@russia', sourcecraft download over https, for regions with github issues (unavailable on builds without TLS).\nIf '@http' (or '@legacy'), legacy server over plain http.", false);
-inline ConVar cv_graph_url_upload ("graph_url_upload", "@workers", "Specifies the base URL to which bots upload graphs. The file is POSTed to the base URL as-is. Set to empty to disable uploads.\nAllowed values: '@workers', '@russia', '@http', or any full base URL.\nIf '@workers', cloudflare worker over https (falls back to '@http' on builds without TLS).\nIf '@russia', yandex worker copy over https (falls back to '@http' on builds without TLS).\nIf '@http' (or '@legacy'), legacy server over plain http.\nAutomatic collection is requested from the server root and requires https, otherwise it's skipped.", false, 0.0f, 0.0f);
+inline ConVar cv_graph_url ("graph_url", "", "Specifies the base URL from which bots download a missing graph. The 'graph/<map>.graph' path is appended automatically. Set to empty to disable downloads.\nAllowed values: '@github', '@russia', '@http', or any full base URL.\nIf '@github', CDN raw over https (unavailable on builds without TLS).\nIf '@russia', sourcecraft download over https, for regions with github issues (unavailable on builds without TLS).\nIf '@http' (or '@legacy'), legacy server over plain http.", false);
+inline ConVar cv_graph_url_upload ("graph_url_upload", "", "Specifies the base URL to which bots upload graphs. The file is POSTed to the base URL as-is. Set to empty to disable uploads.\nAllowed values: '@workers', '@russia', '@http', or any full base URL.\nIf '@workers', cloudflare worker over https (falls back to '@http' on builds without TLS).\nIf '@russia', yandex worker copy over https (falls back to '@http' on builds without TLS).\nIf '@http' (or '@legacy'), legacy server over plain http.\nAutomatic collection is requested from the server root and requires https, otherwise it's skipped.", false, 0.0f, 0.0f);
 inline ConVar cv_graph_auto_save_count ("graph_auto_save_count", "15", "Every N graph nodes placed on the map, the graph will be saved automatically (without checks).", true, 0.0f, kMaxNodes);
 inline ConVar cv_graph_draw_distance ("graph_draw_distance", "400", "Maximum distance to draw graph nodes from the editor viewport.", true, 64.0f, 3072.0f);
-inline ConVar cv_graph_auto_collect_db ("graph_auto_collect_db", "1", "Allows bots to exchange your graph files with the graph database automatically.");
+inline ConVar cv_graph_auto_collect_db ("graph_auto_collect_db", "0", "Allows bots to exchange your graph files with the graph database automatically.");
 
 // analyze
 inline ConVar cv_graph_analyze_auto_start ("graph_analyze_auto_start", "1", "Autostart analyzer if all other cases fail.");

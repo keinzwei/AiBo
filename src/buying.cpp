@@ -72,9 +72,8 @@ bool Bot::IsWeaponRestrictedAmx (Weapon wid) const {
 }
 
 bool Bot::CanReplaceWeapon () {
-  if (human_policy::AwpProfile (Ent ()) && !has_flag (pev->weapons,ystl::bit (Weapon::AWP))) {
-    const auto awp = conf.GetWeapon (Weapon::AWP);
-    if (awp && money_amount_ >= awp->price+1000 && !IsWeaponRestricted (Weapon::AWP)) return true;
+  if (!has_flag (pev->weapons, ystl::bit (Weapon::AWP)) && WantsHumanAWP (800)) {
+    return true;
   }
   // check if owned primary weapon can be replaced with current money
   if (human_policy::Usable (current_weapon_) && !human_policy::Firearm (current_weapon_)) return false;
@@ -263,15 +262,13 @@ int Bot::GetProstockLimit () const {
 }
 
 bool Bot::WantsHumanAWP (int reserve) const {
-  if (const auto p = human_policy::Profile (Ent ())) {
-    const auto awp = conf.GetWeapon (Weapon::AWP);
-    return p->weapon == rbcc::ProWeapon::AWP && awp && !has_flag (pev->weapons,ystl::bit (Weapon::AWP)) &&
-      !IsWeaponRestricted (Weapon::AWP) && money_amount_ >= awp->price + reserve;
-  }
-  int count = 0, carried = 0, rank = 0, own = -1;
-  const auto round = HumanCopycat::RoundNumber ();
   const auto awp = conf.GetWeapon (Weapon::AWP);
-  if (!awp || HasPrimaryWeapon () || money_amount_ < awp->price + reserve) return false;
+  if (!awp || IsWeaponRestricted (Weapon::AWP) || has_flag (pev->weapons, ystl::bit (Weapon::AWP)) ||
+      money_amount_ < awp->price + reserve) {
+    return false;
+  }
+  int count = 0, carried = 0, own = -1;
+  const auto round = HumanCopycat::RoundNumber ();
   for (const auto &mate : bots) {
     if (mate.team_ != team_) continue;
     if (&mate == this) own = count;
@@ -279,16 +276,31 @@ bool Bot::WantsHumanAWP (int reserve) const {
     if (has_flag (mate.pev->weapons, ystl::bit (Weapon::AWP))) ++carried;
   }
   if (own < 0 || count == 0) return false;
+  const int quota = human_policy::SniperQuota (count, cv_human_awp_percent.As<int> (), round);
+  const int needed = quota - carried;
+  if (needed <= 0) return false;
+
+  const bool self_awp_prof = human_policy::AwpProfile (Ent ());
+  if (!self_awp_prof && HasPrimaryWeapon ()) return false;
+
   const int rotation = static_cast<int> (round % static_cast<unsigned> (count));
   const int order = (own + count - rotation) % count;
+  int rank = 0;
   int ordinal = 0;
   for (const auto &mate : bots) {
     if (mate.team_ != team_) continue;
     const int candidate_order = (ordinal++ + count - rotation) % count;
-    if (&mate != this && mate.is_alive_ && !mate.HasPrimaryWeapon () && mate.money_amount_ >= awp->price + reserve &&
-        candidate_order < order) ++rank;
+    if (&mate == this || !mate.is_alive_ || has_flag (mate.pev->weapons, ystl::bit (Weapon::AWP))) continue;
+    const bool mate_awp_prof = human_policy::AwpProfile (mate.Ent ());
+    if (!mate_awp_prof && mate.HasPrimaryWeapon ()) continue;
+    if (mate.money_amount_ < awp->price + reserve) continue;
+
+    // AWP profile specialists take priority; within the same tier, use round-rotated order
+    if ((mate_awp_prof && !self_awp_prof) || (mate_awp_prof == self_awp_prof && candidate_order < order)) {
+      ++rank;
+    }
   }
-  return rank < human_policy::SniperQuota (count, cv_human_awp_percent.As<int> (), round) - carried;
+  return rank < needed;
 }
 
 WeaponInfo *Bot::SelectBuyPrimary (const ystl::SmallArray<int32_t> &pref, const ystl::SmallArray<WeaponInfo> &tab, int money_save) {
@@ -311,14 +323,14 @@ WeaponInfo *Bot::SelectBuyPrimary (const ystl::SmallArray<int32_t> &pref, const 
 }
 
 WeaponInfo *Bot::SelectBuySecondary (const ystl::SmallArray<int32_t> &pref, const ystl::SmallArray<WeaponInfo> &tab) {
-  // selects a secondary weapon based on preferences
+  // selects Deagle as secondary weapon for fast primary-to-secondary switching (AWP & AK-47/M4A1)
   (void)pref;
+  const int reserve = HasPrimaryWeapon () ? 0 : 250;
   for (const auto &weapon : tab) {
-    if (weapon.id == Weapon::Deagle && weapon.price + 400 <= money_amount_ &&
+    if (weapon.id == Weapon::Deagle && weapon.price + reserve <= money_amount_ &&
         IsWeaponEligibleForPurchase (&weapon, team_)) return const_cast<WeaponInfo *> (&weapon);
   }
   return nullptr;
-
 }
 
 void Bot::IssueBuyCommand (const WeaponInfo *weapon) {
@@ -352,8 +364,17 @@ void Bot::EnforceHumanLoadout () {
   if (HasShield ()) IssueCommand ("drop weapon_shield");
   // A known rifler never turns into a random AWPer after a map pickup/plugin grant.
   // An AWPer keeps an emergency rifle until a real AWP purchase/pickup is possible.
-  if (human_policy::RifleProfile (Ent ()) && has_flag (pev->weapons, ystl::bit (Weapon::AWP)))
-    IssueCommand ("drop weapon_awp");
+  if (human_policy::RifleProfile (Ent ()) && has_flag (pev->weapons, ystl::bit (Weapon::AWP))) {
+    int count = 0, carried = 0;
+    for (const auto &mate : bots) {
+      if (mate.team_ != team_) continue;
+      ++count;
+      if (has_flag (mate.pev->weapons, ystl::bit (Weapon::AWP))) ++carried;
+    }
+    if (carried > human_policy::SniperQuota (count, cv_human_awp_percent.As<int> (), HumanCopycat::RoundNumber ())) {
+      IssueCommand ("drop weapon_awp");
+    }
+  }
   struct Forbidden { Weapon id; const char *classname; };
   static constexpr Forbidden forbidden[] = {
     {Weapon::P228,"weapon_p228"}, {Weapon::Elite,"weapon_elite"}, {Weapon::FiveSeven,"weapon_fiveseven"},
@@ -419,14 +440,11 @@ void Bot::BuyArmor () {
 }
 
 void Bot::BuySecondaryWeapon (const ystl::SmallArray<int32_t> &pref, const ystl::SmallArray<WeaponInfo> &tab) {
-  // buys secondary weapon if affordable
-
-  // Keep the free USP/Glock most rounds. A Deagle also has a real eco-round role.
+  // Equip Deagle for fast pro primary-to-secondary switching (both AWP -> Deagle and AK-47/M4A1 -> Deagle)
   if (has_flag (pev->weapons, ystl::bit (Weapon::Deagle))) return;
-  if (money_amount_ < 1050 || !rg.chance (cv_human_deagle_percent.As<int> ())) return;
+  const int min_money = HasPrimaryWeapon () ? 650 : 900;
+  if (money_amount_ < min_money || !rg.chance (cv_human_deagle_percent.As<int> ())) return;
   if (const auto weapon = SelectBuySecondary (pref, tab)) IssueBuyCommand (weapon);
-  return;
-
 }
 
 void Bot::BuyAmmo () {

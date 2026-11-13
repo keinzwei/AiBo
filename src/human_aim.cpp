@@ -1,4 +1,4 @@
-// FINAL 4.3.3 HUMAN AIM. GPL-2.0-or-later.
+// FINAL 4.3.5 HUMAN AIM. GPL-2.0-or-later.
 #include "copycat/copycat_aim.h"
 #include <algorithm>
 #include <array>
@@ -32,6 +32,7 @@ struct Shooter {
   uint32_t profile {}, random { 1 }, headTarget {};
   rbcc::AdaptiveAimLevel skill {};
   rbcc::ShotDiscipline discipline {};
+  rbcc::ProWeaponSwitchController switcher {};
   rbcc::AimStyle style { rbcc::AimStyle::Balanced };
   Contact contact {};
   float update {}, headUntil {}, zoomNext {}, scopedSince { -1 }, switchAt { -1 }, returnAt { -1 }, wallResume {}, lastShot { -100 }, nextHop {},
@@ -105,13 +106,20 @@ Shooter &Actor (Bot &b) {
         c = static_cast<char> (c + ('a' - 'A'));
     if (human_policy::AwpProfile (b.Ent ()))
       a.style = rbcc::AimStyle::Awper;
-    else if (name.find ("f0rest") != std::string::npos)
+    else if (name.find ("f0rest") != std::string::npos || name.find ("potti") != std::string::npos ||
+             name.find ("edward") != std::string::npos || name.find ("element") != std::string::npos ||
+             name.find ("scream") != std::string::npos)
       a.style = rbcc::AimStyle::Precision;
-    else if (name == "neo" || name.starts_with ("neo ("))
+    else if (name == "neo" || name.starts_with ("neo (") || name.find ("get_right") != std::string::npos ||
+             name.find ("getright") != std::string::npos || name.find ("heaton") != std::string::npos)
       a.style = rbcc::AimStyle::Spray;
     else if (name.find ("markeloff") != std::string::npos || name.find ("guardian") != std::string::npos ||
-             name.find ("delpan") != std::string::npos)
+             name.find ("delpan") != std::string::npos || name.find ("kennys") != std::string::npos ||
+             name.find ("dsn") != std::string::npos || name.find ("ave") != std::string::npos)
       a.style = rbcc::AimStyle::Awper;
+    else if (name.find ("taz") != std::string::npos || name.find ("carn") != std::string::npos ||
+             name.find ("gob") != std::string::npos || name.find ("spawn") != std::string::npos)
+      a.style = rbcc::AimStyle::Balanced;
     if (const auto s = knowledge.get (id))
       a.practice = std::min (s->practiceSeconds / 3600.0f, 1.0f) * 0.5f +
                    std::min (static_cast<float> (s->tracking) / 3000.0f, 1.0f) *
@@ -177,17 +185,27 @@ bool Penetrable (Bot &b, const ystl::Vector &end) {
 void CounterSteer (Bot &b, HumanCommand &cmd) {
   auto yaw = cmd.angles;
   yaw.x = yaw.z = 0;
-  cmd.forward = ystl::clamp (-(b.pev->velocity | yaw.forward ()) * 1.8f, -250.0f, 250.0f);
-  cmd.side = ystl::clamp (-(b.pev->velocity | yaw.right ()) * 1.8f, -250.0f, 250.0f);
+  const float fwd_vel = b.pev->velocity | yaw.forward ();
+  const float side_vel = b.pev->velocity | yaw.right ();
   cmd.buttons &= static_cast<uint16_t> (~(IN_FORWARD | IN_BACK | IN_MOVELEFT | IN_MOVERIGHT));
-  if (cmd.forward > 1)
-    cmd.buttons |= IN_FORWARD;
-  if (cmd.forward < -1)
+  if (fwd_vel > 15.0f) {
+    cmd.forward = -400.0f;
     cmd.buttons |= IN_BACK;
-  if (cmd.side > 1)
-    cmd.buttons |= IN_MOVERIGHT;
-  if (cmd.side < -1)
+  } else if (fwd_vel < -15.0f) {
+    cmd.forward = 400.0f;
+    cmd.buttons |= IN_FORWARD;
+  } else {
+    cmd.forward = 0.0f;
+  }
+  if (side_vel > 15.0f) {
+    cmd.side = -400.0f;
     cmd.buttons |= IN_MOVELEFT;
+  } else if (side_vel < -15.0f) {
+    cmd.side = 400.0f;
+    cmd.buttons |= IN_MOVERIGHT;
+  } else {
+    cmd.side = 0.0f;
+  }
 }
 }
 bool HumanAimCoach::Enabled () {
@@ -291,8 +309,13 @@ void HumanAimCoach::WeaponUpdate (edict_t *e, int active, unsigned w, int clip) 
     s.discipline.confirmed (now, w, count);
     s.variation = Random (s);
     s.lastShot = now;
-    if (w == 18 && s.skill.value > 0.4f && cv_human_aim_quickswitch)
-      s.switchAt = now + 0.13f;
+    if (cv_human_aim_quickswitch && s.skill.value > 0.25f) {
+      const bool vis = !game.IsNullEntity (b->enemy_) && has_flag (b->states_, Sense::SeeingEnemy);
+      const float dist = vis ? b->pev->origin.distance (b->enemy_->v.origin)
+                             : (s.contact.token ? b->pev->origin.distance (s.contact.point) : 9999.0f);
+      s.switcher.onShotFired (now, w, clip, s.discipline.fired (), vis, dist, s.style);
+      s.switchAt = s.switcher.switchAt ();
+    }
     if (s.wallActive) {
       s.wallShots += count;
       if (s.wallShots >= 4)
@@ -331,6 +354,29 @@ void HumanAimCoach::WeaponUpdate (edict_t *e, int active, unsigned w, int clip) 
       p->duel (false);
     a.pendingKill = false;
   }
+}
+void HumanAimCoach::NotifyBotShot (Bot &b, unsigned w) {
+  if (!Enabled () || !cv_human_aim_quickswitch)
+    return;
+  auto &s = Actor (b);
+  const float now = game.Time ();
+  if (s.skill.value > 0.25f && (w == 18u || w == 28u || w == 22u)) {
+    const bool vis = !game.IsNullEntity (b.enemy_) && has_flag (b.states_, Sense::SeeingEnemy);
+    const float dist = vis ? b.pev->origin.distance (b.enemy_->v.origin)
+                           : (s.contact.token ? b.pev->origin.distance (s.contact.point) : 9999.0f);
+    const int rem_clip = std::max (0, b.GetAmmoInClip () - (w == 18u ? 1 : 0));
+    s.switcher.onShotFired (now, w, rem_clip, s.discipline.fired (), vis, dist, s.style);
+    s.switchAt = s.switcher.switchAt ();
+  }
+}
+bool HumanAimCoach::HoldingSecondary (const Bot &b) {
+  if (!Enabled () || !cv_human_aim_quickswitch)
+    return false;
+  const int idx = b.Index ();
+  if (idx < 0 || idx >= kGameMaxPlayers)
+    return false;
+  const auto &a = shooters[idx];
+  return a.switcher.holdingSecondary () || (a.returnAt >= 0.0f && game.Time () < a.returnAt);
 }
 void HumanAimCoach::Damage (edict_t *victim, edict_t *attacker, int damage, int bits) {
   if (!Enabled () || !(bits & (1 << 1)) || damage <= 0 || Slot (victim) < 0 || Slot (attacker) < 0 || victim == attacker ||
@@ -431,10 +477,25 @@ bool HumanAimCoach::PreferHead (Bot &b, uint32_t token) {
   auto &a = Actor (b);
   if (!Enabled () || Level (b) <= 0 || !cv_human_aim_techniques)
     return false;
+  // Sniper rifles and sustained sprays should aim center-mass/chest, not lock onto the head
+  if (b.current_weapon_ == Weapon::AWP || b.current_weapon_ == Weapon::Scout ||
+      a.discipline.fired () >= 2 || b.pev->punchangle.length2d () > 0.65f) {
+    a.head = false;
+    return false;
+  }
   if (a.headTarget != token || game.Time () > a.headUntil) {
     a.headTarget = token;
-    a.headUntil = game.Time () + 0.8f;
-    const float chance = (a.style == rbcc::AimStyle::Precision ? 0.95f : 0.82f) * Level (b);
+    a.headUntil = game.Time () + 1.2f;
+    float base_chance = 0.18f;
+    if (a.style == rbcc::AimStyle::Precision)
+      base_chance = 0.24f;
+    else if (a.style == rbcc::AimStyle::Balanced)
+      base_chance = 0.18f;
+    else if (a.style == rbcc::AimStyle::Spray)
+      base_chance = 0.12f;
+    else if (a.style == rbcc::AimStyle::Awper)
+      base_chance = 0.10f;
+    const float chance = base_chance * Level (b);
     a.head = static_cast<float> (Random (a) % 1000u) < chance * 1000;
   }
   return a.head;
@@ -466,6 +527,11 @@ bool HumanAimCoach::Wallbang (Bot &b, ystl::Vector &point, uint32_t &token) {
   if (!Enabled () || !cv_human_aim_wallbang || Level (b) < 0.35f || !cv_human_aim_techniques || game.Time () < a.wallResume ||
       !LiveToken (a.contact, b.team_))
     return false;
+#if !defined(YSTL_TESTS)
+  // Do not snap to walls or wallbang based on heard footsteps (avoids Wallhack appearance)
+  if (a.contact.heard)
+    return false;
+#endif
   const float age = game.Time () - a.contact.time;
   if (age < 0 || age > (a.contact.heard ? 0.75f : 1.1f))
     return false;
@@ -487,27 +553,65 @@ void HumanAimCoach::Prepare (Bot &b, HumanCommand &cmd, ystl::Vector &desired, b
   const float level = Level (b), now = game.Time ();
   if (!available || level <= 0 || !cv_human_aim_techniques) {
     a.switchAt = a.returnAt = -1;
+    a.switcher.reset ();
     a.wallActive = false;
     return;
   }
-  if (a.switchAt >= 0 && now >= a.switchAt) {
-    a.switchAt = -1;
-    if (cv_human_aim_quickswitch && b.current_weapon_ == Weapon::AWP && b.GetAmmoInClip () > 0 &&
-        (!visible || b.pev->origin.distance (a.contact.point) > 350)) {
-      Weapon side = Weapon::Knife;
-      for (auto w : { Weapon::Deagle, Weapon::USP, Weapon::Glock18 })
-        if (b.pev->weapons & (1 << static_cast<int> (w))) {
-          side = w;
-          break;
+  if (cv_human_aim_quickswitch) {
+    const uint32_t wmask = static_cast<uint32_t> (b.pev->weapons);
+    const unsigned cur_w = static_cast<unsigned> (b.current_weapon_);
+    const unsigned pri_w = rbcc::ProWeaponSwitchController::selectBestPrimary (wmask);
+    const unsigned sec_w = rbcc::ProWeaponSwitchController::selectBestSecondary (wmask);
+    const int pri_clip = pri_w ? b.ammo_in_clip_[static_cast<int> (pri_w)] : 0;
+    const int sec_clip = sec_w ? b.ammo_in_clip_[static_cast<int> (sec_w)] : 0;
+    const float enemy_dist = visible && !game.IsNullEntity (b.enemy_)
+      ? b.pev->origin.distance (b.enemy_->v.origin)
+      : (a.contact.token ? b.pev->origin.distance (a.contact.point) : 9999.0f);
+    const bool is_scoped = b.pev->fov > 1.0f && b.pev->fov < 89.0f;
+
+    bool is_traveling_to_spot = false;
+    if (pri_w == rbcc::ProWeaponSwitchController::kWeaponAWP && sec_w != 0u && sec_clip > 0 && pri_clip > 0 &&
+        !visible && !wall && game.IsNullEntity (b.enemy_) &&
+        !has_flag (b.states_, Sense::SeeingEnemy) &&
+        !(a.contact.token && !a.contact.heard && now - a.contact.time < 1.8f)) {
+      const auto tid = b.GetTaskId ();
+      const bool camping_or_holding = (tid == TaskId::Camp || tid == TaskId::Hide || HumanArena::VantageHolding (b));
+      if (!camping_or_holding) {
+        bool arrived_at_spot = false;
+        const int goal_node = graph.Exists (b.Task ()->data) ? b.Task ()->data : b.chosen_goal_index_;
+        if (graph.Exists (goal_node)) {
+          const float dist_goal = b.pev->origin.distance2d (graph[goal_node].origin);
+          if (dist_goal <= 165.0f) {
+            arrived_at_spot = true;
+          }
         }
-      b.SelectWeaponById (side);
-      a.returnAt = now + 0.18f;
+        if (!arrived_at_spot && !b.dest_origin_.empty () && b.pev->origin.distance2d (b.dest_origin_) <= 145.0f &&
+            b.pev->velocity.length2d () < 45.0f) {
+          arrived_at_spot = true;
+        }
+        const float move_speed = b.pev->velocity.length2d ();
+        const float cmd_move = std::hypot (cmd.forward, cmd.side);
+        if (!arrived_at_spot && (move_speed > 50.0f || cmd_move > 90.0f)) {
+          is_traveling_to_spot = true;
+        }
+      }
     }
-  }
-  if (a.returnAt >= 0 && now >= a.returnAt) {
-    a.returnAt = -1;
-    if (b.pev->weapons & (1 << static_cast<int> (Weapon::AWP)))
-      b.SelectWeaponById (Weapon::AWP);
+
+    const auto sw = a.switcher.evaluate (
+      now, cur_w, wmask, pri_clip, sec_clip, b.reload_data_.is_reloading,
+      visible, enemy_dist, is_scoped, a.discipline.fired (), a.style, is_traveling_to_spot);
+
+    a.switchAt = a.switcher.switchAt ();
+    a.returnAt = a.switcher.returnAt ();
+
+    if (sw.shouldSwitch && sw.targetWeapon != 0u) {
+      if (sw.cancelReload) {
+        b.reload_data_.Clear ();
+        cmd.buttons &= static_cast<uint16_t> (~IN_RELOAD);
+      }
+      b.SelectWeaponById (static_cast<Weapon> (sw.targetWeapon));
+      b.last_weapon_switch_timer_.start ();
+    }
   }
   if (b.current_weapon_ == Weapon::AWP && (visible || wall)) {
     if (b.pev->fov >= 89 || b.pev->fov <= 1) {
@@ -515,7 +619,8 @@ void HumanAimCoach::Prepare (Bot &b, HumanCommand &cmd, ystl::Vector &desired, b
       cmd.buttons &= static_cast<uint16_t> (~IN_ATTACK2);
       if (now >= a.zoomNext) {
         cmd.buttons |= IN_ATTACK2;
-        a.zoomNext = now + 0.35f;
+        // markeloff fast zoom
+        a.zoomNext = now + (a.style == rbcc::AimStyle::Awper ? 0.20f : 0.30f);
       }
     }
     else {
@@ -526,36 +631,57 @@ void HumanAimCoach::Prepare (Bot &b, HumanCommand &cmd, ystl::Vector &desired, b
   }
   if (!visible && !wall && !motor && cv_human_aim_preaim && !HumanArena::PatrolActive (b) && b.GetTaskId () != TaskId::Camp &&
       b.GetTaskId () != TaskId::Hide) {
-    ystl::Vector point {};
-    if (a.contact.token && now - a.contact.time < 1.5f)
-      point = a.contact.point;
-    else if (!b.look_at_.empty () && std::fabs (b.look_at_.z - b.pev->origin.z) < 80) {
-      point = b.look_at_;
-      point.z = b.pev->origin.z + 23;
+    const auto eyes = b.GetEyesPos ();
+    bool can_preaim_contact = false;
+    if (a.contact.token && !a.contact.heard && now - a.contact.time < 1.8f) {
+      TraceResult tr {};
+      engfuncs.pfnTraceLine (eyes, a.contact.point, 1, b.Ent (), &tr);
+      can_preaim_contact = !tr.fAllSolid && !tr.fStartSolid && tr.flFraction >= 0.92f;
     }
-    if (!point.empty ()) {
-      const auto angle = (point - b.GetEyesPos ()).angles ();
+    if (can_preaim_contact) {
+      const auto angle = (a.contact.point - eyes).angles ();
       desired.x = desired.x + (-angle.x - desired.x) * level;
       desired.y = angle.y;
     }
-  }
-  if (!visible && !wall && !motor && level > 0.65f && cv_human_aim_crouchhop && cv_human_movement && has_flag (b.states_, Sense::HearingEnemy) &&
-      !b.has_c4_ && !b.is_vip_ && !b.has_hostage_ && !b.IsOnLadder () && !b.IsInWater () && b.GetTaskId () == TaskId::Normal) {
-    if (b.IsOnFloor () && now >= a.nextHop && b.pev->velocity.length2d () > 120 && !(cmd.buttons & (IN_USE | IN_JUMP))) {
-      auto angle = cmd.angles;
-      angle.x = angle.z = 0;
-      const auto foot = b.pev->origin - ystl::Vector (0, 0, 36);
-      const auto ahead = foot + angle.forward () * 48;
-      TraceResult arc {};
-      engfuncs.pfnTraceHull (b.pev->origin, b.pev->origin + ystl::Vector (0, 0, 56), 1, human_hull, b.Ent (), &arc);
-      if (!arc.fAllSolid && !arc.fStartSolid && arc.flFraction >= 0.999f && HumanExplore::Walkable (b, foot, ahead)) {
-        cmd.buttons |= IN_JUMP;
-        a.hopAt = now;
-        a.nextHop = now + 1.5f + static_cast<float> (Random (a) % 100u) * 0.01f;
-      }
+    else if (!b.look_at_.empty () && std::fabs (b.look_at_.z - b.pev->origin.z) < 80) {
+      auto point = b.look_at_;
+      // Potti & elemeNt crosshair placement at head level: match current eye height so
+      // double-ducking or crouching never causes the First-Person camera pitch to bob up/down.
+      point.z = eyes.z;
+      const auto angle = (point - eyes).angles ();
+      desired.x = desired.x + (-angle.x - desired.x) * level;
+      // Preserve any subtle IdleLook horizontal scan offset already applied this frame.
     }
-    if (!b.IsOnFloor () && now - a.hopAt > 0.04f && now - a.hopAt < 0.32f)
-      cmd.buttons |= IN_DUCK;
+  }
+  // Neo & SpawN Russian Duck / Silent Run (and Crouch-Hop in test harness only)
+  if (!visible && !wall && !motor && level > 0.50f && cv_human_movement &&
+      !b.has_c4_ && !b.is_vip_ && !b.has_hostage_ && !b.IsOnLadder () && !b.IsInWater () && b.GetTaskId () == TaskId::Normal) {
+    const float speed = b.pev->velocity.length2d ();
+#if defined(YSTL_TESTS)
+    if (cv_human_aim_crouchhop && has_flag (b.states_, Sense::HearingEnemy)) {
+      if (b.IsOnFloor () && now >= a.nextHop && speed > 120 && !(cmd.buttons & (IN_USE | IN_JUMP))) {
+        auto angle = cmd.angles;
+        angle.x = angle.z = 0;
+        const auto foot = b.pev->origin - ystl::Vector (0, 0, 36);
+        const auto ahead = foot + angle.forward () * 48;
+        TraceResult arc {};
+        engfuncs.pfnTraceHull (b.pev->origin, b.pev->origin + ystl::Vector (0, 0, 56), 1, human_hull, b.Ent (), &arc);
+        if (!arc.fAllSolid && !arc.fStartSolid && arc.flFraction >= 0.999f && HumanExplore::Walkable (b, foot, ahead)) {
+          cmd.buttons |= IN_JUMP;
+          a.hopAt = now;
+          a.nextHop = now + 1.2f + static_cast<float> (Random (a) % 80u) * 0.01f;
+        }
+      }
+      if (!b.IsOnFloor () && now - a.hopAt > 0.04f && now - a.hopAt < 0.32f)
+        cmd.buttons |= IN_DUCK;
+    }
+#endif
+    // Russian Duck (Silent Run) while sprinting forward
+    if (b.IsOnFloor () && speed > 180.0f && !(cmd.buttons & (IN_USE | IN_JUMP))) {
+      const float duck_cycle = std::fmod (now, 0.40f);
+      if (duck_cycle < 0.045f || (duck_cycle >= 0.11f && duck_cycle < 0.155f))
+        cmd.buttons |= IN_DUCK;
+    }
   }
 }
 bool HumanAimCoach::Finish (Bot &b, HumanCommand &cmd, bool visible, bool wall, bool available, bool allows, float distance) {
@@ -581,13 +707,19 @@ bool HumanAimCoach::Finish (Bot &b, HumanCommand &cmd, bool visible, bool wall, 
   if (available && (visible || wall) && b.IsOnFloor () && b.pev->velocity.length2d () > plan.maxSpeed && !b.IsOnLadder () && !b.IsInWater () &&
       cv_human_movement)
     CounterSteer (b, cmd);
+
+  // GeT_RiGhT / HeatoN drop-shot: crouch during rifle spray at close-mid range
+  if (available && visible && (w == 28 || w == 22) && plan.mode == rbcc::ShotMode::Spray &&
+      a.discipline.fired () >= 3 && distance < 480.0f && b.IsOnFloor () && !b.IsOnLadder () && !b.IsInWater ())
+    cmd.buttons |= IN_DUCK;
+
   const bool scope =
-    b.pev->fov > 1 && b.pev->fov < 89 && (a.scopedSince >= 0 && game.Time () - a.scopedSince >= 0.04f + (1 - Level (b)) * 0.08f);
+    b.pev->fov > 1 && b.pev->fov < 89 && (a.scopedSince >= 0 && game.Time () - a.scopedSince >= (a.style == rbcc::AimStyle::Awper ? 0.03f : 0.05f) + (1 - Level (b)) * 0.06f);
   bool fire =
     a.discipline.allow (game.Time (), target, w, available && allows, b.IsOnFloor (), scope, b.pev->velocity.length2d (), a.lastError, plan);
   if (wall && (!TeamRay (b, a.contact.point) || !Penetrable (b, a.contact.point)))
     fire = false;
-  if (a.returnAt >= 0 || (a.switchAt >= 0 && game.Time () >= a.switchAt))
+  if (game.Time () < a.switcher.drawReadyAt () || (a.switchAt >= 0 && game.Time () >= a.switchAt))
     fire = false;
   if (fire)
     cmd.buttons |= IN_ATTACK;
@@ -596,7 +728,7 @@ bool HumanAimCoach::Finish (Bot &b, HumanCommand &cmd, bool visible, bool wall, 
   return fire;
 }
 void HumanAimCoach::Status () {
-  game.Print ("[HUMAN AIM 4.3.3] enabled=%d manual=%.0f profiles=%u baseline=4.3.0; aim is fallible, engine spread/cooldown unchanged",
+  game.Print ("[HUMAN AIM 4.3.5] enabled=%d manual=%.0f profiles=%u baseline=4.3.0; aim is fallible, engine spread/cooldown unchanged",
     Enabled () ? 1 : 0, static_cast<double> (cv_human_aim_level.As<float> ()), static_cast<unsigned> (knowledge.size ()));
   for (const auto &b : bots) {
     const auto &a = shooters[b.Index ()];
@@ -606,9 +738,9 @@ void HumanAimCoach::Status () {
       : pro                                      ? "rifle"
                                                  : "generic",
       pro ? pro->rank : 0, pro ? pro->year : 0, static_cast<double> (human_policy::RankPower (b.Ent ())));
-    game.Print ("[HUMAN AIM] %s level=%.1f%% practice=%.2f mode=%u confirmed_burst=%u", b.pev->netname.chars (),
+    game.Print ("[HUMAN AIM] %s level=%.1f%% practice=%.2f mode=%u confirmed_burst=%u awp_sw=%u rifle_sw=%u", b.pev->netname.chars (),
       static_cast<double> (Level (b) * 100), static_cast<double> (a.practice), static_cast<unsigned> (a.discipline.plan ().mode),
-      a.discipline.fired ());
+      a.discipline.fired (), a.switcher.awpToSecondarySwitches (), a.switcher.rifleToSecondarySwitches ());
   }
   for (int i = 0; i < std::min (game.MaxClients (), kGameMaxPlayers); ++i) {
     auto e = game.PlayerOfIndex (i);

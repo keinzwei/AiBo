@@ -1,4 +1,4 @@
-# Eksplorasi dan percakapan lintas bahasa — AiBo 4.3.3
+# Eksplorasi dan percakapan lintas bahasa — AiBo 4.3.5
 
 Panduan umum: **FINAL-GUIDE-ID.md**. Katalog memakai 23 topik dan 1.440 fragmen; bagian berikut menjelaskan eksplorasi dan percakapan aktif.
 
@@ -125,7 +125,7 @@ overlay 16.384 node dengan jarak sampel horizontal sekitar 64 unit dan maksimal
 
 ## Memasang dan mencoba pada Dust2
 
-1. Tutup CS/HLDS, ekstrak seluruh ZIP, dan jalankan `AiBo-4.3.3-Setup.exe`.
+1. Tutup CS/HLDS, ekstrak seluruh ZIP, dan jalankan `AiBo-4.3.5-Setup.exe`.
 2. Pilih folder `cstrike` yang benar. Pemasang memperbarui DLL **dan konfigurasi**.
    Menyalin DLL saja dapat menyisakan `aibo_human_chat_language id` dari versi lama.
 3. Buka `de_dust2`, gunakan graph dasar yang valid, lalu mainkan beberapa ronde.

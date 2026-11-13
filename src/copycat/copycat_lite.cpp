@@ -1,4 +1,4 @@
-// Bounded, local procedural policies for Human Copycat. GPL-2.0-or-later.
+// Bounded, local procedural policies for Human Copycat (Level 4: 10-Player 5v5 Team Equilibrium). GPL-2.0-or-later.
 #include "copycat_lite.h"
 #include <algorithm>
 #include <cmath>
@@ -43,8 +43,8 @@ GunTuning gunTuning(unsigned w,float d){
     case 18:g={20,1250,10,std::max(.12f,std::min(.65f,std::atan2(7.f,std::max(200.f,d))*57.2957795f)),true,true};break;
     case 26:g={20,far?270.f:190.f,far?22.f:55.f,far?1.2f:2.f,true,false};break;
     case 16:g={20,far?190.f:135.f,far?40.f:100.f,far?1.7f:3.f,true,false};break;
-    case 28:g={near?600.f:(far?20.f:190.f),far?230.f:110.f,near?110.f:35.f,far?.8f:2.6f,far,false};break;
-    case 22:g={near?600.f:(far?20.f:185.f),far?210.f:100.f,near?120.f:40.f,far?.85f:2.8f,far,false};break;
+    case 28:{const bool spray=d>0&&d<550;g={near?680.f:(spray?450.f:(far?20.f:220.f)),far?230.f:105.f,near?110.f:42.f,far?.8f:(spray?3.8f:2.8f),far,false};break;}
+    case 22:{const bool spray=d>0&&d<550;g={near?680.f:(spray?460.f:(far?20.f:215.f)),far?210.f:95.f,near?120.f:45.f,far?.85f:(spray?4.0f:3.0f),far,false};break;}
     case 15:g={near?550.f:(far?20.f:180.f),far?215.f:110.f,near?110.f:38.f,far?.9f:2.8f,far,false};break;
     case 19:g={near?500.f:(far?170.f:320.f),far?140.f:85.f,far?100.f:240.f,far?2.4f:4.f,false,false};break;
     default:break;
@@ -74,8 +74,9 @@ void composeChat(char* out,size_t n,LiteChatEvent event,LiteRng& rng){
     std::snprintf(out,n,"%s%s%s",start[rng.bounded(6)],parts[rng.bounded(8)],end[rng.bounded(6)]);
 }
 unsigned desiredBots(unsigned quota,unsigned clients,unsigned others){
-    quota=std::min(31u,quota);clients=std::min(32u,clients);
-    // Keep one joinable slot even on an empty dedicated server.
-    unsigned used=std::max(1u,others);return used>=clients?0:std::min(quota,clients-used);
+    // Internet Mode Capacity: Max 21 bots
+    quota=std::min(21u,quota);clients=std::min(32u,clients);
+    unsigned maxBySlots=others>=clients?0u:(clients-others);
+    return std::min(quota,std::min(21u,maxBySlots));
 }
 } // namespace rbcc

@@ -1,6 +1,6 @@
-# HUMAN AIM dan Boost — FINAL 4.3.3
+# HUMAN AIM dan Boost — FINAL 4.3.5
 
-Default paket adalah batas kemampuan Pro `100`. Profil pemain dan bobot peringkat memberi variasi kemampuan individual; lihat `PRO-PROFILES-4.3.3-ID.md`. Kuota 31 bot, bahasa profil dan fitur 4.3.0 tetap aktif; lihat `FINAL-GUIDE-ID.md` untuk server 32 slot.
+Default paket adalah batas kemampuan Pro `100`. Profil pemain dan bobot peringkat memberi variasi kemampuan individual; lihat `PRO-PROFILES-4.3.5-ID.md`. Kuota 31 bot, bahasa profil dan fitur 4.3.0 tetap aktif; lihat `FINAL-GUIDE-ID.md` untuk server 32 slot.
 
 ## Level dan proses belajar
 

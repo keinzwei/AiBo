@@ -6,6 +6,7 @@
 //
 
 #include <aibo.h>
+#include <filesystem>
 
 namespace bot {
 
@@ -78,10 +79,13 @@ template <typename U, ReservePolicy R> bool Storage::Load (ystl::Array<U, R> &da
     return false;
   };
 
-  // no open no fun
+  // no open no fun (in Single-DLL mode, missing initial files are normal and trigger self-bootstrapping without errors)
   if (!file) {
-    if (try_reload ()) {
+    if (!cv_single_dll_mode && try_reload ()) {
       return true;
+    }
+    if (cv_single_dll_mode) {
+      return false;
     }
     return Error (is_graph, is_debug, file, "Unable to open %s file for reading (filename: '%s').", type.name, filename);
   }
@@ -270,6 +274,10 @@ template <typename U, ReservePolicy R> bool Storage::Save (const ystl::Array<U, 
       path.light = illum.GetLightLevel (path.origin);
     }
   }
+
+  // Auto-create parent directories on disk so a standalone single AiBo.dll can build its own data folders
+  std::error_code ec;
+  std::filesystem::create_directories (std::filesystem::path (filename.chars ()).parent_path (), ec);
 
   // open the file
   ystl::File file (filename, "wb");
@@ -489,7 +497,9 @@ ystl::StringRef Storage::GetRunningPath () {
     path = ystl::SharedLibrary::path (&bstor);
 
     if (path.empty ()) {
-      ystl::logger.fatal ("Unable to detect library path. Giving up...");
+      use_non_relative_paths_ = true;
+      path = ystl::strings.join_path (game.GetRunningModName (), folders.addons, folders.bot);
+      return path;
     }
 
     // remove dot prefix
@@ -497,11 +507,15 @@ ystl::StringRef Storage::GetRunningPath () {
       path.ltrim (".\\/");
     }
     auto parts = path.substr (1).split (kPathSeparator);
-
-    parts.pop (); // remove library name
-    parts.pop (); // remove bin directory
-
-    path = path.substr (0, 1) + ystl::String::join (parts, kPathSeparator);
+    if (parts.size () >= 2) {
+      parts.pop (); // remove library name
+      parts.pop (); // remove bin directory
+      path = path.substr (0, 1) + ystl::String::join (parts, kPathSeparator);
+    }
+    else {
+      use_non_relative_paths_ = true;
+      path = ystl::strings.join_path (game.GetRunningModName (), folders.addons, folders.bot);
+    }
   }
   return path;
 }

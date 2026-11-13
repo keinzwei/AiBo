@@ -1,5 +1,4 @@
-// Geometry-discovered navigation overlay. GPL-2.0-or-later.
-// 2026-10-27: explicit float queue seed for strict MSVC builds.
+// Geometry-discovered navigation overlay + Level 2 Graph Attention Network (GAT). GPL-2.0-or-later.
 #include "copycat_explore.h"
 #include <algorithm>
 #include <cmath>
@@ -25,9 +24,138 @@ struct Read {
   uint32_t get () { if (pos + 4 > b.size ()) { ok = false; return 0; } uint32_t n {}; for (unsigned i = 0; i < 4; ++i) n |= static_cast<uint32_t> (b[pos++]) << (i * 8u); return n; }
   float real () { const auto n = get (); float f; std::memcpy (&f, &n, 4); return f; }
 };
+float leaky (float x) { return x >= 0.0f ? x : 0.2f * x; }
+}
+void ExploreMap::initGat () {
+  gat_ = GraphAttentionWeights {};
+  // Deterministic structural attention priors:
+  // Features: [0:vantage, 1:hide, 2:crouch, 3:posture, 4:novelty, 5:age, 6:degree, 7:elevation]
+  for (size_t i = 0; i < GatFeatureDim; ++i) {
+    gat_.w[i][i] = 0.85f;
+    gat_.aSrc[i] = (i == 0 || i == 1 || i == 4) ? 0.45f : 0.20f;
+    gat_.aDst[i] = (i == 6 || i == 0 || i == 7) ? 0.50f : -0.15f;
+    gat_.readout[0][i] = (i == 1 ? 0.65f : (i == 0 ? 0.50f : (i == 6 ? -0.30f : 0.25f)));
+    gat_.readout[1][i] = (i == 0 ? 0.60f : (i == 4 ? 0.55f : (i == 1 ? 0.40f : 0.20f)));
+  }
+  gat_.w[0][6] = 0.35f; // Vantage looking into high-degree hub
+  gat_.w[1][2] = 0.40f; // Hide coupled with crouch cover
+  gat_.w[1][6] = -0.35f; // Low degree alcove amplifies ambush safety
+}
+std::array<float, GatFeatureDim> ExploreMap::nodeFeatures (size_t idx, unsigned team) const {
+  std::array<float, GatFeatureDim> f {};
+  if (idx >= nodes_.size ()) return f;
+  const auto &n = nodes_[idx];
+  const unsigned t = std::min (team, 1u);
+  f[0] = static_cast<float> (n.vantage) / 255.0f;
+  f[1] = static_cast<float> (n.hide) / 255.0f;
+  f[2] = n.crouchCover ? 1.0f : 0.0f;
+  f[3] = n.posture ? 1.0f : 0.0f;
+  f[4] = 1.0f / std::sqrt (1.0f + static_cast<float> (n.visits[t]));
+  f[5] = std::clamp (static_cast<float> (clock_ - n.lastVisit[t]) / 500.0f, 0.0f, 1.0f);
+  f[6] = std::clamp (static_cast<float> (n.links.size ()) / 8.0f, 0.0f, 1.0f);
+  f[7] = std::clamp (n.foot.z / 256.0f, -1.0f, 1.0f);
+  return f;
+}
+void ExploreMap::updateNodeAttention (int node) {
+  if (node < 0 || static_cast<size_t> (node) >= nodes_.size ()) return;
+  const size_t u = static_cast<size_t> (node);
+  auto &nd = nodes_[u];
+  const auto xU = nodeFeatures (u, 0);
+  std::array<float, GatFeatureDim> hU {};
+  for (size_t k = 0; k < GatFeatureDim; ++k) {
+    float s = 0.0f;
+    for (size_t j = 0; j < GatFeatureDim; ++j) s += gat_.w[k][j] * xU[j];
+    hU[k] = leaky (s);
+  }
+  if (nd.links.empty ()) {
+    nd.gat.ambushScore = 0.0f;
+  }
+  // Compute multi-head neighborhood attention over 1-hop neighbors (plus self-loop)
+  std::vector<size_t> nbrs;
+  nbrs.reserve (nd.links.size () + 1);
+  nbrs.push_back (u);
+  for (const auto &l : nd.links) if (l.to < nodes_.size ()) nbrs.push_back (l.to);
+
+  std::vector<std::array<float, GatFeatureDim>> hN (nbrs.size ());
+  std::vector<float> logits (nbrs.size (), 0.0f);
+  float maxLogit = -1e30f;
+  float srcTerm = 0.0f;
+  for (size_t k = 0; k < GatFeatureDim; ++k) srcTerm += gat_.aSrc[k] * hU[k];
+
+  for (size_t m = 0; m < nbrs.size (); ++m) {
+    const auto xV = nodeFeatures (nbrs[m], 0);
+    float dstTerm = 0.0f;
+    for (size_t k = 0; k < GatFeatureDim; ++k) {
+      float s = 0.0f;
+      for (size_t j = 0; j < GatFeatureDim; ++j) s += gat_.w[k][j] * xV[j];
+      hN[m][k] = leaky (s);
+      dstTerm += gat_.aDst[k] * hN[m][k];
+    }
+    logits[m] = std::clamp (leaky (srcTerm + dstTerm), -10.0f, 10.0f);
+    if (logits[m] > maxLogit) maxLogit = logits[m];
+  }
+  float denom = 0.0f;
+  for (float &lg : logits) { lg = std::exp (lg - maxLogit); denom += lg; }
+  if (denom <= 1e-9f) denom = 1.0f;
+
+  std::array<float, GatFeatureDim> agg {};
+  for (size_t m = 0; m < nbrs.size (); ++m) {
+    const float alpha = logits[m] / denom;
+    for (size_t k = 0; k < GatFeatureDim; ++k) agg[k] += alpha * hN[m][k];
+  }
+
+  // Head 1: Ambush & tactical vantage over connected corridors
+  const float localCover = xU[1] * 0.65f + xU[2] * 0.35f;
+  const float neighborOpenness = agg[0] * 0.60f + agg[6] * 0.40f;
+  nd.gat.ambushScore = std::clamp ((localCover * 1.2f + neighborOpenness * 0.8f - xU[6] * 0.45f) * 120.0f, -60.0f, 180.0f);
+  // Head 2: Crossfire exposure (high degree node surrounded by high-vantage neighbors)
+  nd.gat.exposureScore = std::clamp ((xU[6] * 0.75f + agg[0] * 0.55f - localCover * 0.65f) * 100.0f, 0.0f, 150.0f);
+  nd.gat.ready = true;
+}
+float ExploreMap::gatScore (int node, unsigned team, bool sniper) const {
+  if (node < 0 || static_cast<size_t> (node) >= nodes_.size () || team > 1) return 0.0f;
+  const size_t u = static_cast<size_t> (node);
+  const auto &nd = nodes_[u];
+  const auto feat = nodeFeatures (u, team);
+  float readout = 0.0f;
+  for (size_t k = 0; k < GatFeatureDim; ++k) readout += gat_.readout[team][k] * feat[k];
+  float score = readout * 45.0f + nd.gat.learnedValue[team] * 55.0f;
+  if (nd.gat.ready) {
+    score += nd.gat.ambushScore * (sniper ? 0.85f : 0.55f) - nd.gat.exposureScore * (sniper ? 0.45f : 0.30f);
+  }
+  return std::clamp (score, -220.0f, 260.0f);
+}
+void ExploreMap::reinforceNode (int node, unsigned team, float reward) {
+  if (node < 0 || static_cast<size_t> (node) >= nodes_.size () || team > 1 || !std::isfinite (reward)) return;
+  reward = std::clamp (reward, -3.0f, 3.0f);
+  const size_t u = static_cast<size_t> (node);
+  auto &nd = nodes_[u];
+  if (!nd.gat.ready) updateNodeAttention (node);
+  const float prev = nd.gat.learnedValue[team];
+  const float err = reward - prev;
+  nd.gat.learnedValue[team] = std::clamp (prev + 0.22f * err, -5.0f, 5.0f);
+  const auto feat = nodeFeatures (u, team);
+  for (size_t k = 0; k < GatFeatureDim; ++k) {
+    gat_.readout[team][k] = std::clamp (gat_.readout[team][k] + 0.035f * err * feat[k], -3.0f, 3.0f);
+  }
+  // Propagate discounted reward across 1-hop graph neighbors
+  for (const auto &l : nd.links) {
+    if (l.to < nodes_.size ()) {
+      auto &nbr = nodes_[l.to].gat.learnedValue[team];
+      nbr = std::clamp (nbr + 0.08f * (reward * 0.6f - nbr), -5.0f, 5.0f);
+    }
+  }
+  if (gat_.updates < 1000000000u) ++gat_.updates;
+  dirty_ = true;
 }
 std::tuple<int,int,int> ExploreMap::key (const Vec &p) const { return {static_cast<int> (std::floor (p.x / 64)), static_cast<int> (std::floor (p.y / 64)), static_cast<int> (std::floor (p.z / 32))}; }
-void ExploreMap::rebuild () { index_.clear (); for (size_t i = 0; i < nodes_.size (); ++i) index_[key (nodes_[i].foot)].push_back (static_cast<uint16_t> (i)); }
+void ExploreMap::rebuild () {
+  index_.clear ();
+  for (size_t i = 0; i < nodes_.size (); ++i) {
+    index_[key (nodes_[i].foot)].push_back (static_cast<uint16_t> (i));
+    updateNodeAttention (static_cast<int> (i));
+  }
+}
 void ExploreMap::clear () { *this = ExploreMap {}; }
 int ExploreMap::nearest (const Vec &p, float radius) const {
   if (!validPoint (p) || !std::isfinite (radius) || radius <= 0 || radius > 512) return -1;
@@ -36,7 +164,7 @@ int ExploreMap::nearest (const Vec &p, float radius) const {
   for (int a = -xy; a <= xy; ++a) for (int b = -xy; b <= xy; ++b) for (int c = -zz; c <= zz; ++c) {
     const auto it = index_.find ({x+a,y+b,z+c}); if (it == index_.end ()) continue;
     for (auto n : it->second) {
-      if (std::fabs (nodes_[n].foot.z - p.z) > 24.0f) continue; // never merge stacked floors
+      if (std::fabs (nodes_[n].foot.z - p.z) > 24.0f) continue;
       const float d = distance (p, nodes_[n].foot); if (d < best) { best = d; result = n; }
     }
   }
@@ -47,7 +175,20 @@ int ExploreMap::seed (const Vec &p, uint8_t posture) {
   const int old = nearest (p, 34); if (old >= 0) return old;
   if (nodes_.size () >= MaxNodes) return -1;
   const auto n = static_cast<uint16_t> (nodes_.size ()); ExploreNode node; node.foot = p; node.posture = posture;
-  nodes_.push_back (node); index_[key (p)].push_back (n); dirty_ = true; return n;
+  nodes_.push_back (node); index_[key (p)].push_back (n);
+  updateNodeAttention (static_cast<int> (n));
+  dirty_ = true; return n;
+}
+void ExploreMap::annotate (int node, uint8_t vantage, uint8_t hide, uint8_t crouchCover, int16_t watchYaw) {
+  if (node < 0 || static_cast<size_t> (node) >= nodes_.size ()) return;
+  auto &n = nodes_[static_cast<size_t> (node)];
+  n.vantage = std::max (n.vantage, vantage);
+  if (hide >= n.hide) {
+    n.hide = hide;
+    n.watchYaw = watchYaw;
+  }
+  n.crouchCover = std::max (n.crouchCover, crouchCover);
+  updateNodeAttention (node);
 }
 bool ExploreMap::link (int from, int to, uint8_t posture, bool reverse) {
   if (from < 0 || to < 0 || from == to || static_cast<size_t> (from) >= nodes_.size () || static_cast<size_t> (to) >= nodes_.size () || posture > 1 || distance (nodes_[from].foot, nodes_[to].foot) > 128) return false;
@@ -57,7 +198,10 @@ bool ExploreMap::link (int from, int to, uint8_t posture, bool reverse) {
     if (links.size () >= MaxLinks) return false;
     links.push_back ({static_cast<uint16_t> (b), posture}); dirty_ = true; return true;
   };
-  const bool result = add (from, to); if (reverse) add (to, from); return result;
+  const bool result = add (from, to); if (reverse) add (to, from);
+  updateNodeAttention (from);
+  updateNodeAttention (to);
+  return result;
 }
 unsigned ExploreMap::expand (unsigned budget, const Probe &probe, const std::function<bool ()> &expired) {
   if (nodes_.empty () || !probe) return 0;
@@ -74,8 +218,24 @@ unsigned ExploreMap::expand (unsigned budget, const Probe &probe, const std::fun
     ExploreStep step;
     if (!probe (from, candidate, step) || !validPoint (step.foot) || step.posture > 1 || distance (candidate, step.foot) > 96) continue;
     const int next = seed (step.foot, step.posture); if (next < 0) continue;
-    nodes_[static_cast<size_t> (next)].vantage = std::max (nodes_[static_cast<size_t> (next)].vantage, step.vantage);
+    annotate (next, step.vantage, step.hide, step.crouchCover, step.watchYaw);
     link (static_cast<int> (n), next, step.posture, step.reverse);
+    const auto [kx, ky, kz] = key (nodes_[static_cast<size_t> (next)].foot);
+    for (int dx = -1; dx <= 1; ++dx) for (int dy = -1; dy <= 1; ++dy) {
+      const auto it = index_.find ({kx + dx, ky + dy, kz});
+      if (it == index_.end ()) continue;
+      for (auto other : it->second) {
+        if (other == static_cast<uint16_t> (next) || other == static_cast<uint16_t> (n)) continue;
+        if (nodes_[other].links.size () >= MaxLinks || nodes_[static_cast<size_t> (next)].links.size () >= MaxLinks) continue;
+        const float dist = distance (nodes_[static_cast<size_t> (next)].foot, nodes_[other].foot);
+        if (dist > 78.0f || std::fabs (nodes_[static_cast<size_t> (next)].foot.z - nodes_[other].foot.z) > 16.0f) continue;
+        ExploreStep meshStep;
+        if (probe (nodes_[static_cast<size_t> (next)].foot, nodes_[other].foot, meshStep) &&
+            distance (meshStep.foot, nodes_[other].foot) < 16.0f) {
+          link (next, static_cast<int> (other), meshStep.posture, meshStep.reverse);
+        }
+      }
+    }
   }
   return done;
 }
@@ -93,14 +253,20 @@ ExplorePlan ExploreMap::plan (const Vec &foot, unsigned team, unsigned slot, uin
     const auto &node = nodes_[n]; float separation = 0;
     for (size_t s = 0; s < reservations_.size (); ++s) if (s != slot && reservations_[s] >= 0 && reservation_teams_[s] == team) {
       const float d = distance (node.foot, nodes_[static_cast<size_t> (reservations_[s])].foot);
-      if (d < 280) separation += (280 - d) * 2.0f;
+      if (d < 360) separation += (360 - d) * 2.3f;
     }
     uint32_t mix = seedValue ^ static_cast<uint32_t> (n) * 2654435761u; mix = hashBytes (&mix, sizeof mix);
     const float jitter = static_cast<float> (mix & 255u) * 0.16f;
     const float age = static_cast<float> (std::min (clock_ - node.lastVisit[team], 1000u));
-    float score = (node.visits[team] == 0 ? 420.0f : 180.0f / std::sqrt (static_cast<float> (node.visits[team]))) +
-      (node.tested != 255 ? 50.0f : 0.0f) + age * 0.15f + jitter - cost * 0.035f - separation;
-    if (sniper) score += static_cast<float> (node.vantage) * 0.55f;
+    const float hideBonus = static_cast<float> (node.hide) *
+      (node.visits[team] == 0 ? 2.35f : (0.75f / std::sqrt (static_cast<float> (node.visits[team])))) +
+      (node.crouchCover && node.visits[team] == 0 ? 75.0f : 0.0f) +
+      (node.posture && node.visits[team] == 0 ? 55.0f : 0.0f);
+    // Level 2 GAT structural attention score integrated into goal selection
+    const float gatBonus = gatScore (static_cast<int> (n), team, sniper);
+    float score = (node.visits[team] == 0 ? 420.0f : 170.0f / std::sqrt (static_cast<float> (node.visits[team]))) +
+      hideBonus + gatBonus + (node.tested != 255 ? 75.0f : 0.0f) + age * 0.16f + jitter - cost * 0.030f - separation;
+    if (sniper) score += static_cast<float> (node.vantage) * 0.60f + static_cast<float> (node.hide) * 0.40f;
     if (goal_bias) score += goal_bias (node.foot);
     if (n != start && cost >= 48) {
       if (score > fallback_score) { fallback_score = score; fallback = n; }
@@ -110,7 +276,9 @@ ExplorePlan ExploreMap::plan (const Vec &foot, unsigned team, unsigned slot, uin
       uint32_t random = seedValue ^ static_cast<uint32_t> (n) * 2246822519u ^ static_cast<uint32_t> (edge.to) * 3266489917u;
       random = hashBytes (&random,sizeof random);
       const float variety = goal_bias ? static_cast<float> (random & 255u) * (0.25f / 255.0f) : 0.0f;
-      const float nextCost = cost + distance (node.foot, nodes_[edge.to].foot) * (1.0f + variety) + (edge.posture ? 20.0f : 0.0f);
+      // GAT exposure penalty on intermediate edges so paths route around exposed crossfire hubs
+      const float exposurePenalty = nodes_[edge.to].gat.ready ? nodes_[edge.to].gat.exposureScore * 0.08f : 0.0f;
+      const float nextCost = cost + distance (node.foot, nodes_[edge.to].foot) * (1.0f + variety) + (edge.posture ? 16.0f : 0.0f) + exposurePenalty;
       if (nextCost < costs[edge.to]) { costs[edge.to] = nextCost; parent[edge.to] = n; open.push ({nextCost, edge.to}); }
     }
   }
@@ -125,7 +293,9 @@ ExplorePlan ExploreMap::plan (const Vec &foot, unsigned team, unsigned slot, uin
 void ExploreMap::visit (int n, unsigned team) {
   if (n < 0 || static_cast<size_t> (n) >= nodes_.size () || team > 1) return;
   if (clock_ < 1000000000u) ++clock_;
-  auto &node = nodes_[static_cast<size_t> (n)]; if (node.visits[team] < 1000000000u) ++node.visits[team]; node.lastVisit[team] = clock_; dirty_ = true;
+  auto &node = nodes_[static_cast<size_t> (n)]; if (node.visits[team] < 1000000000u) ++node.visits[team]; node.lastVisit[team] = clock_;
+  updateNodeAttention (n);
+  dirty_ = true;
 }
 void ExploreMap::release (unsigned slot) { if (slot < reservations_.size ()) { reservations_[slot] = -1; reservation_teams_[slot] = 255; } }
 void ExploreMap::retry (int node) { if (node >= 0 && static_cast<size_t> (node) < nodes_.size ()) { nodes_[static_cast<size_t> (node)].tested = 0; scan_ = static_cast<size_t> (node); direction_ = 0; } }
@@ -133,6 +303,7 @@ void ExploreMap::block (int from, int to) {
   if (from < 0 || static_cast<size_t> (from) >= nodes_.size ()) return;
   auto &links = nodes_[static_cast<size_t> (from)].links;
   links.erase (std::remove_if (links.begin (), links.end (), [to] (const ExploreLink &l) { return l.to == to; }), links.end ());
+  updateNodeAttention (from);
   dirty_ = true;
 }
 void ExploreMap::newRound () {

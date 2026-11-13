@@ -1,4 +1,4 @@
-# AiBo FINAL 4.3.3
+# AiBo FINAL 4.3.5
 
 CT menyisir wilayah untuk mencari musuh. Ketika situasi ronde memungkinkan,
 sebagian CT bergerak ke Tunnel, T-Spawn dan Pit pada `de_dust2`, mengecek beberapa
@@ -23,9 +23,9 @@ NEO memakai #1 (2011), f0rest #2 (2013). Profil tinggi memiliki teknik efektif l
 kuat, error lebih kecil dan reaksi lebih cepat dibanding profil di urutan bawah.
 Kill dan skor tetap hasil pertandingan. Tidak ada pemberian frag atau jaminan
 peringkat tertentu selalu menang. Tabel lengkap, sumber dan rumus ada di
-`PRO-PROFILES-4.3.3-ID.md`.
+`PRO-PROFILES-4.3.5-ID.md`.
 
-Installer `AiBo-4.3.3-Setup.exe` menyertakan `autobuy.txt` dan `listenserver.cfg`
+Installer `AiBo-4.3.5-Setup.exe` menyertakan `autobuy.txt` dan `listenserver.cfg`
 unggahan Anda tanpa mengubah satu byte. Jika isi lama berbeda, file lama dipindahkan
 ke `.bak` sebelum file baru dipasang. Jika `.bak` sudah ada, digunakan `.bak.1`,
 `.bak.2`, dan seterusnya. Kegagalan pemasangan memulihkan file asli. Instal ulang

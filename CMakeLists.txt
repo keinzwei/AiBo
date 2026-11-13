@@ -16,7 +16,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-project(aibo VERSION 4.3.3 DESCRIPTION "Artificial Intelligence Bot" HOMEPAGE_URL "https://yapb.github.io/" LANGUAGES C CXX)
+project(aibo VERSION 4.3.5 DESCRIPTION "Artificial Intelligence Bot" HOMEPAGE_URL "https://yapb.github.io/" LANGUAGES C CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 

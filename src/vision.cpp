@@ -150,21 +150,22 @@ void Bot::UpdateLookAngles () {
   ystl::Vector direction = (look_at_ - GetEyesPos ()).angles ();
   direction.x = -direction.x; // invert for engine
 
+  // Counter punchangle during engagement (HeatoN / GeT_RiGhT AK47 & M4A4 spray control).
+  // In GoldSrc, upward recoil makes pev->punchangle.x negative, so subtract punchangle.x to pull pitch down.
+  if (has_flag (aim_flags_, AimFlags::Enemy) && !UsesSniper () && !UsesKnife () && difficulty_ >= Difficulty::Normal) {
+    const float spray_pull = (current_weapon_ == Weapon::AK47 || current_weapon_ == Weapon::M4A1) ? 0.45f : 0.25f;
+    direction.x -= pev->punchangle.x * spray_pull;
+    direction.y -= pev->punchangle.y * spray_pull;
+  }
+
   direction.clamp_angles ();
 
-  // just force direction
-  if (difficulty_ == Difficulty::Expert && has_flag (aim_flags_, AimFlags::Enemy) && (wants_to_fire_ || UsesSniper ()) && cv_whose_your_daddy) {
-
-    pev->v_angle = direction;
-    pev->v_angle.clamp_angles ();
-
-    UpdateBodyAngles ();
-    return;
-  }
-  constexpr float kPitchFactor = 2.0f; // pitch is 2x stiffer (legacy feel)
-  constexpr float kYawDampingRatio = 1.0f; // yaw critically damped (no oscillation)
-  constexpr float kPitchDampingRatio = 0.8f; // pitch slightly underdamped for faster vertical tracking
-  constexpr float kSnapAngle = 1.0f; // deg, snap-to-target window
+  // Never teleport pev->v_angle = direction (eliminates robotic Aimlock);
+  // always move the camera through coupled 2D mouse spring kinematics.
+  constexpr float kPitchFactor = 1.0f; // matched 2D mouse stiffness so pitch & yaw move together on a 2D vector
+  constexpr float kYawDampingRatio = 1.0f; // smooth mouse deceleration without oscillation
+  constexpr float kPitchDampingRatio = 1.0f; // matched 2D mouse damping
+  constexpr float kSnapAngle = 0.0f; // zero hard snap window (continuous mouse glide)
 
   const bool engaging = has_flag (aim_flags_, AimFlags::Enemy | AimFlags::Grenade) || wants_to_fire_;
 
@@ -222,9 +223,10 @@ void Bot::UpdateLookAngles () {
     adjust_yaw_for_navigation ();
   }
 
-  // freeze pitch when the target is almost straight above or below
-  if (!engaging && (look_at_ - GetEyesPos ()).length_sq2d () < ystl::sqrf (48.0f)) {
-    angle_diff_pitch = 0.0f;
+  // Natural wrist-arc coupling on horizontal mouse swipes so the camera never pans like arrow keys
+  if (!engaging && ystl::abs (angle_diff_yaw) > 1.5f) {
+    const float wrist_arc = ystl::sinf (ideal_angles_.y * 0.055f) * ystl::clamp (ystl::abs (angle_diff_yaw) * 0.055f, 0.15f, 1.5f);
+    angle_diff_pitch += wrist_arc;
   }
 
   ideal_angles_.y = look_yaw_.Update (yaw, angle_diff_yaw, ideal_angles_.y, delta);
@@ -386,7 +388,7 @@ void Bot::SetAimDirection () {
       look_at_.z += 72.0f;
     }
   }
-  else if (has_flag (flags, AimFlags::LastEnemy)) {
+  else if (has_flag (flags, AimFlags::LastEnemy) && (!thru_wall_hold_timer_.elapsed () || SeesEntity (last_enemy_origin_, true))) {
     look_at_ = last_enemy_origin_;
 
     // did bot just see enemy (or is holding a thru-wall engagement) and is quite aggressive?
@@ -555,18 +557,23 @@ void Bot::SetAimDirection () {
       }
     }
 
-    // lookahead: look ahead on path
-    if (!target_set && !vertical_move && move_to_goal_ && can_set_aim_direction_ && IsOnFloor () && !IsDucking () &&
-        graph.Exists (current_node_index_) && path_walk_.HasNext () && pev->origin.distance_sq (dest_origin) < ystl::sqrf (384.0f) &&
-        path_->radius >= 16.0f && path_->flags == 0 && graph[path_walk_.Next ()].flags == 0) {
+    // lookahead: look ahead on path (keep active during Russian duck / corridors when HumanCopycat is enabled)
+    const bool allow_lookahead = HumanCopycat::Enabled ()
+      ? (!has_flag (graph[path_walk_.HasNext () ? path_walk_.Next () : current_node_index_].flags, NodeFlag::Ladder))
+      : (!IsDucking () && path_ && path_->radius >= 16.0f && path_->flags == 0 &&
+         path_walk_.HasNext () && graph[path_walk_.Next ()].flags == 0);
+    if (!target_set && !vertical_move && move_to_goal_ && can_set_aim_direction_ && IsOnFloor () &&
+        graph.Exists (current_node_index_) && path_walk_.HasNext () && pev->origin.distance_sq (dest_origin) < ystl::sqrf (420.0f) &&
+        allow_lookahead) {
 
       const auto next_path_index = path_walk_.Next ();
+      const float max_z_diff = HumanCopycat::Enabled () ? 48.0f : 8.0f;
 
-      if (graph.Exists (next_path_index) && ystl::abs (graph[next_path_index].origin.z - path_origin_.z) < 8.0f) {
+      if (graph.Exists (next_path_index) && ystl::abs (graph[next_path_index].origin.z - path_origin_.z) < max_z_diff) {
 
         const auto is_narrow_place = IsInNarrowPlace ();
 
-        if (path_walk_.Length () > 2 && !is_narrow_place) {
+        if (path_walk_.Length () > 2 && (!is_narrow_place || HumanCopycat::Enabled ())) {
           const auto next_path_index_x2 = path_walk_.NextX2 ();
 
           // prefer two-node lookahead, fall back to one-node if not visible
@@ -578,7 +585,7 @@ void Bot::SetAimDirection () {
           }
           target_set = true;
         }
-        else if (!is_narrow_place) {
+        else if (!is_narrow_place || HumanCopycat::Enabled ()) {
           look_at_ = graph[next_path_index].origin + pev->view_ofs;
           target_set = true;
         }

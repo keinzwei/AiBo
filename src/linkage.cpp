@@ -144,8 +144,16 @@ YSTL_EXPORT int GetEntityAPI (gamefuncs_t *table, int interface_version) {
 
   table->pfnTouch = [] (edict_t *pent_touched, edict_t *pent_other) YSTL_FORCE_STACK_ALIGN {
     const auto profile_blocked = [] (edict_t *who, edict_t *item) {
-      return bot::bots[who] && !bot::game.IsNullEntity (item) && bot::human_policy::RifleProfile (who) &&
-        item->v.model.str ().ends_with ("w_awp.mdl");
+      auto b = bot::bots[who];
+      if (!b || bot::game.IsNullEntity (item) || !item->v.model.str ().ends_with ("w_awp.mdl")) return false;
+      if (!bot::human_policy::RifleProfile (who)) return false;
+      int count = 0, carried = 0;
+      for (const auto &mate : bot::bots) {
+        if (mate.team_ != b->team_) continue;
+        ++count;
+        if (bot::has_flag (mate.pev->weapons, ystl::bit (bot::Weapon::AWP))) ++carried;
+      }
+      return carried >= bot::human_policy::SniperQuota (count, bot::cv_human_awp_percent.As<int> (), bot::HumanCopycat::RoundNumber ());
     };
     const bool blocked = profile_blocked (pent_touched,pent_other) || profile_blocked (pent_other,pent_touched) ||
       (bot::bots[pent_touched] && bot::human_policy::BlockPickup (pent_other)) ||
@@ -205,10 +213,15 @@ YSTL_EXPORT int GetEntityAPI (gamefuncs_t *table, int interface_version) {
     if (ystl::StringRef (addr) == "loopback") {
       bot::game.SetLocalEntity (ent); // save the edict of the listen server client
 
-      // if not dedicated set the default editor for bot::graph
-      if (!bot::game.IsDedicatedServer ()) {
+      // do not auto-assign graph editor in Single-DLL mode so waypoint lines and HUD node texts never appear automatically
+      if (!bot::game.IsDedicatedServer () && !bot::cv_single_dll_mode) {
         bot::graph.SetEditor (ent);
       }
+    }
+
+    // Continuous Player Monitoring: learn nickname morphology from connecting real human players
+    if (name && *name && (!ent || !(ent->v.flags & FL_FAKECLIENT))) {
+      bot::HumanArena::ObserveHumanNickname (name);
     }
 
     // refresh bot::clients immediately

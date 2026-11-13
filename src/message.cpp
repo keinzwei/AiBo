@@ -352,6 +352,7 @@ void MessageDispatch::NetMsgDeathMsg () {
   auto victim_entity = game.EntityOfIndex (args_[victim].long_);
   HumanCopycat::LearningDeath (killer_entity, victim_entity);
   HumanArena::Death (killer_entity,victim_entity);
+  if (args_.size () >= 3 && args_[2].long_ != 0) HumanArena::NoteHeadshot (killer_entity, victim_entity);
   HumanAimCoach::Death (killer_entity,victim_entity,args_.size ()>=3 && args_[2].long_!=0);
 
   if (game.IsNullEntity (killer_entity) || game.IsNullEntity (victim_entity) || victim_entity == killer_entity) {

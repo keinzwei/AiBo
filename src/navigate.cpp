@@ -36,6 +36,36 @@ bool Bot::ShouldRushEndgameTime () const {
 }
 
 int Bot::FindBestGoal () {
+  if (game.MapIs (MapFlags::Demolition)) {
+    if (team_ == Team::CT && game_state.IsBombPlanted () && GetTaskId () != TaskId::EscapeFromBomb && !game_state.GetBombOrigin ().empty ()) {
+      if (bots.HasBombSay (BombPlantedSay::ChatSay)) {
+        PushChatMessage (Chat::Plant);
+        bots.ClearBombSay (BombPlantedSay::ChatSay);
+      }
+      return chosen_goal_index_ = FindBombNode ();
+    }
+    if (team_ == Team::Terrorist && !game_state.IsBombPlanted ()) {
+      if (has_c4_) {
+        if (in_bomb_zone_) {
+          const int near_goal = graph.GetNearest (pev->origin, 1024.0f, NodeFlag::Goal);
+          if (graph.Exists (near_goal)) return chosen_goal_index_ = near_goal;
+        }
+        if (graph.Exists (chosen_goal_index_) && has_flag (graph[chosen_goal_index_].flags, NodeFlag::Goal) &&
+            !mode_walls.IsNodeBlocked (graph[chosen_goal_index_].origin)) {
+          return chosen_goal_index_;
+        }
+        if (const int spread = HumanCopycat::StrategicGoal (*this);
+            graph.Exists (spread) && has_flag (graph[spread].flags, NodeFlag::Goal)) {
+          return chosen_goal_index_ = spread;
+        }
+        return chosen_goal_index_ = FindGoalPost (GoalTactic::Goal, &graph.GetPoints (PointType::Terrorist), &graph.GetPoints (PointType::CT));
+      }
+      else {
+        const int dropped = FindBestGoalWhenBombAction ();
+        if (graph.Exists (dropped)) return chosen_goal_index_ = dropped;
+      }
+    }
+  }
   if (const int chosen = HumanArena::Goal (*this); graph.Exists (chosen)) return chosen_goal_index_ = chosen;
   if (const int spread = HumanCopycat::StrategicGoal (*this); graph.Exists (spread)) {
     return chosen_goal_index_ = spread;
@@ -426,11 +456,11 @@ int Bot::FindGoalPost (GoalTactic tactic, ystl::SmallArray<int32_t> *defensive, 
         }
         const float distance_sq = graph[point].origin.distance_sq (pev->origin);
 
-        if (distance_sq > ystl::sqrf (2048.0f)) {
+        if (!has_c4_ && distance_sq > ystl::sqrf (2048.0f)) {
           continue;
         }
 
-        if (IsGroupOfEnemies (graph[point].origin)) {
+        if (!has_c4_ && IsGroupOfEnemies (graph[point].origin)) {
           continue;
         }
 
@@ -520,8 +550,8 @@ int Bot::FindGoalPost (GoalTactic tactic, ystl::SmallArray<int32_t> *defensive, 
   }
   EnsureCurrentNodeIndex ();
 
-  // rusher bots does not care any danger
-  if (personality_ == Personality::Rusher) {
+  // rusher bots does not care any danger (except C4 carrier, which must lock onto the optimal bombsite goal)
+  if (personality_ == Personality::Rusher && !has_c4_ && !is_vip_) {
     const auto random_goal = goal_choices[rg (0, 3)];
 
     if (graph.Exists (random_goal)) {
@@ -1136,8 +1166,10 @@ void Bot::ExecuteCollisionResponse () {
   case CollisionState::Jump:
     // jump once, not every tick: a held IN_JUMP bunny-hops in place and shakes the model
     if ((IsOnFloor () || IsInWater ()) && !IsOnLadder () && jump_time_ + 0.75f < game.Time ()) {
-      if (IsInWater () || !is_creature_ || last_damage_timestamp_ < game.Time () || has_flag (current_travel_flags_, PathFlag::Jump) ||
-          IsStuckState ()) {
+      const bool valid_jump = !HumanCopycat::Enabled () || IsInWater () || has_flag (current_travel_flags_, PathFlag::Jump) ||
+        CanJumpUp ((dest_origin_ - pev->origin).normalize2d ());
+      if (valid_jump && (IsInWater () || !is_creature_ || last_damage_timestamp_ < game.Time () ||
+          has_flag (current_travel_flags_, PathFlag::Jump) || IsStuckState ())) {
         pev->button |= IN_JUMP;
       }
     }
@@ -1451,6 +1483,11 @@ void Bot::TranslateInput () {
     }
   }
 
+  // Neo air-strafing: release forward button when airborne at speed with active strafe to allow GoldSrc air acceleration
+  if (!IsOnFloor () && !IsInWater () && !IsOnLadder () && pev->velocity.length2d () > 120.0f && !ystl::fzero (strafe_speed_)) {
+    pev->button &= ~(IN_FORWARD | IN_BACK);
+  }
+
   // strafing on a ladder slides the bot off sideways, drop it at the output stage
   if (IsOnLadder ()) {
     strafe_speed_ = 0.0f;
@@ -1533,15 +1570,7 @@ bool Bot::UpdateNavigation () {
 
       // if bot's on the ground or on the ladder we're free to jump
       if (IsOnFloor () || IsOnLadder ()) {
-        if (HumanCopycat::Enabled ()) {
-          // A graph jump is an intention, never permission to write player velocity.
-          const auto direction = desired_velocity_.length_sq2d () > 1.0f ? desired_velocity_ : path_origin_ - pev->origin;
-          move_angles_ = direction.angles ();
-          move_angles_.x = 0.0f;
-          move_speed_ = pev->maxspeed;
-          strafe_speed_ = 0.0f;
-        }
-        else if (desired_velocity_.length2d () > 0.0f) {
+        if (desired_velocity_.length2d () > 0.0f) {
           RetimeJumpVelocityForLip ();
           pev->velocity = desired_velocity_;
         }
@@ -2904,10 +2933,13 @@ int Bot::FindBombNode () {
     }
   }
 
-  // bomb is audible - navigate to sound source
-  if (!audible_origin.empty ()) {
-    const int node = graph.GetNearest (audible_origin, 240.0f);
-
+  // bomb is audible or known - navigate directly to the planted bomb
+  if (!audible_origin.empty () || (!bomb_origin.empty () && (bomb_known_ || bots.IsBombKnown (Team::CT)))) {
+    const ystl::Vector target_pos = !audible_origin.empty () ? audible_origin : bomb_origin;
+    int node = graph.GetNearest (target_pos, 320.0f);
+    if (node == kInvalidNodeIndex) {
+      node = graph.GetNearest (target_pos, 640.0f, NodeFlag::Goal);
+    }
     if (node != kInvalidNodeIndex) {
       bomb_search_overridden_ = true;
       return node;
@@ -3440,6 +3472,13 @@ bool Bot::AdvanceMovement () {
       if (!analyzed || has_flag (graph[from].flags, NodeFlag::Ladder)) {
         return false;
       }
+      if (HumanCopycat::Enabled ()) {
+        const auto from_foot = graph[from].origin - ystl::Vector (0.0f, 0.0f, has_flag (graph[from].flags, NodeFlag::Crouch) ? 18.0f : 36.0f);
+        const auto to_foot = graph[to].origin - ystl::Vector (0.0f, 0.0f, has_flag (graph[to].flags, NodeFlag::Crouch) ? 18.0f : 36.0f);
+        if (to_foot.z - from_foot.z <= cv_graph_slope_height.As<float> () || HumanExplore::Walkable (*this, from_foot, to_foot)) {
+          return false;
+        }
+      }
       const float diff = ystl::abs (graph[from].origin.z - graph[to].origin.z);
 
       return graph[to].origin.z > graph[from].origin.z && diff > cv_graph_slope_height.As<float> () &&
@@ -3803,6 +3842,22 @@ bool Bot::CanJumpUp (const ystl::Vector &normal) {
   constexpr float kDuckJumpHeight = -36.0f + 63.0f; // 27.0f - waist height + duck jump
   constexpr float kSideOffset = 16.0f;
 
+  if (HumanCopycat::Enabled ()) {
+    // Require an actual low obstacle at shin/waist level that is not a player/door and is not already walkable.
+    const auto foot = pev->origin - ystl::Vector (0.0f, 0.0f, IsDucking () ? 18.0f : 36.0f);
+    if (HumanExplore::Walkable (*this, foot, foot + normal * 36.0f)) {
+      return false;
+    }
+    Trace::Result low_tr {};
+    const ystl::Vector low_src = foot + ystl::Vector (0.0f, 0.0f, 22.0f);
+    trace.Line (low_src, low_src + normal * kJumpForwardDist, TraceIgnore::Monsters, Ent (), &low_tr);
+    if (low_tr.fraction >= 1.0f || game.IsDoorEntity (low_tr.hit) || game.IsPlayerEntity (low_tr.hit)) {
+      return false;
+    }
+  }
+
+  const ystl::Vector side = HumanCopycat::Enabled () ? ystl::Vector (-normal.y, normal.x, 0.0f).normalize2d () * kSideOffset : ystl::Vector (kSideOffset, 0.0f, 0.0f);
+
   // check center position at normal jump height
   if (!check_jump_clearance (ystl::Vector (0.0f, 0.0f, kNormalJumpHeight), normal, kJumpForwardDist, kJumpUpDist)) {
     // try duck jump height as fallback
@@ -3812,17 +3867,17 @@ bool Bot::CanJumpUp (const ystl::Vector &normal) {
   }
 
   // check right side at normal jump height
-  if (!check_jump_clearance (ystl::Vector (kSideOffset, 0.0f, kNormalJumpHeight), normal, kJumpForwardDist, kJumpUpDist)) {
+  if (!check_jump_clearance (side + ystl::Vector (0.0f, 0.0f, kNormalJumpHeight), normal, kJumpForwardDist, kJumpUpDist)) {
     // try duck jump height as fallback
-    if (!check_jump_clearance (ystl::Vector (kSideOffset, 0.0f, kDuckJumpHeight), normal, kJumpForwardDist, kJumpUpDist)) {
+    if (!check_jump_clearance (side + ystl::Vector (0.0f, 0.0f, kDuckJumpHeight), normal, kJumpForwardDist, kJumpUpDist)) {
       return false;
     }
   }
 
   // check left side at normal jump height
-  if (!check_jump_clearance (ystl::Vector (-kSideOffset, 0.0f, kNormalJumpHeight), normal, kJumpForwardDist, kJumpUpDist)) {
+  if (!check_jump_clearance (-side + ystl::Vector (0.0f, 0.0f, kNormalJumpHeight), normal, kJumpForwardDist, kJumpUpDist)) {
     // try duck jump height as fallback
-    if (!check_jump_clearance (ystl::Vector (-kSideOffset, 0.0f, kDuckJumpHeight), normal, kJumpForwardDist, kJumpUpDist)) {
+    if (!check_jump_clearance (-side + ystl::Vector (0.0f, 0.0f, kDuckJumpHeight), normal, kJumpForwardDist, kJumpUpDist)) {
       return false;
     }
   }

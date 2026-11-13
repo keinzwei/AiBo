@@ -1,5 +1,6 @@
-// Human Copycat FINAL 4.3.3. GPL-2.0-or-later.
+// Human Copycat FINAL 4.3.5 + Level 1 Contextual Utility AI, Spatial Heatmap & Episodic Memory. GPL-2.0-or-later.
 #include "copycat/copycat_final.h"
+#include "copycat/copycat_dialogue.h"
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
@@ -11,6 +12,7 @@ namespace bot {
 namespace {
 struct FinalActor {
   rbcc::FinalPersona persona {};
+  rbcc::CurriculumGoal curriculum { rbcc::CurriculumGoal::OpeningEntryDuel };
   uint32_t profile {};
   int serial { -1 }, user { -1 }, goal { -1 };
   float update {}, next_strategy {}, goal_until {}, stop_until {}, next_boost {}, next_brag {}, help_after {};
@@ -19,9 +21,14 @@ struct FinalActor {
   unsigned patrol_visits[3] {};
   unsigned hunt_steps {};
   int hunt_continue { -1 };
-  float next_hunt_look {}, hunt_yaw {};
+  float next_hunt_look {}, hunt_yaw {}, current_hunt_yaw {}, hunt_pitch {}, current_hunt_pitch {};
   ystl::Vector stop {}, watch {};
   bool stopping {}, previous_top {}, boost_hold {};
+  // Level 1 Episodic Memory per bot
+  ystl::String last_opponent {};
+  ystl::String last_nemesis {};
+  ystl::String last_area {};
+  bool last_revenge {}, last_headshot {};
 };
 struct Pair {
   int helper { -1 }, climber { -1 }, helper_serial { -1 }, climber_serial { -1 };
@@ -40,13 +47,18 @@ struct SmokeScreen {
 };
 SmokeScreen screens[2];
 rbcc::FinalMemory memory;
+rbcc::AsyncTacticalCommander commander;
+rbcc::SelfEvolvingBrain evolving_brain;
+rbcc::InternetModeSimulator internet_sim;
+rbcc::GenerativeNicknameEngine nickname_engine;
+float next_commander_dispatch[2] {};
 std::vector<ystl::Vector> doors;
 struct AnchorSight {
   float score {}, expires {};
   ystl::Vector look {};
 };
 std::map<std::tuple<int, int, int>, AnchorSight> sight_cache;
-std::string map_name, memory_path;
+std::string map_name, memory_path, evo_path, nickname_path, llm_path;
 uint32_t environment {}, run_seed { 1 };
 bool ready {};
 float next_join {}, next_leave {}, next_boost_scan {};
@@ -70,6 +82,69 @@ bool Alive (const Bot &b) {
 bool Clear (const TraceResult &tr) {
   return !tr.fAllSolid && !tr.fStartSolid && tr.flFraction >= 0.999f;
 }
+const char *AreaLabel (const Bot &b, const ystl::Vector &foot) {
+  const int r = HumanArena::PatrolRegion (foot);
+  if (r == 0) return "T-Spawn";
+  if (r == 1) return "Tunnels";
+  if (r == 2) return "Long-Pit";
+  if (b.in_bomb_zone_) return "Bombsite";
+  if (foot.z > 64.0f) return "Highground";
+  if (foot.z < -64.0f) return "Lower";
+  return "Mid";
+}
+rbcc::UtilityContext BuildUtilityContext (const Bot &b) {
+  rbcc::UtilityContext ctx {};
+  ctx.healthRatio = std::clamp (b.pev->health / 100.0f, 0.0f, 1.0f);
+  ctx.economyRatio = std::clamp (static_cast<float> (b.money_amount_) / 8000.0f, 0.0f, 1.0f);
+  int allies = 0, enemies = 0;
+  for (int i = 0; i < std::min (game.MaxClients (), kGameMaxPlayers); ++i) {
+    auto e = game.PlayerOfIndex (i);
+    if (!e || e->free || !(e->v.flags & FL_CLIENT) || e->v.deadflag != DEAD_NO || e->v.health <= 0)
+      continue;
+    const auto t = game.GetPlayerTeam (e);
+    if (t == b.team_) ++allies;
+    else if (t == Team::CT || t == Team::Terrorist) ++enemies;
+  }
+  ctx.numericalAdvantage = std::clamp (static_cast<float> (allies - enemies) / 5.0f, -1.0f, 1.0f);
+  ctx.isSniper = has_flag (b.pev->weapons, ystl::bit (Weapon::AWP)) ? 1.0f : 0.0f;
+  const auto w = static_cast<uint32_t> (b.pev->weapons);
+  ctx.hasUtility = ((w & (1u << 25u)) || (w & (1u << 9u)) || (w & (1u << 4u))) ? 1.0f : 0.0f;
+  ctx.roundUrgency = (game_state.IsBombPlanted () || game_state.GetRoundTimeLeft () < 35.0f) ? 1.0f : 0.0f;
+  ctx.opponentAggression = HumanCopycat::OpponentAggression (b.team_);
+  ctx.personalRisk = actors[b.Index ()].persona.risk;
+  return ctx;
+}
+void DispatchCommanderTeam (Team team) {
+  const unsigned t = static_cast<unsigned> (team);
+  if (t > 1) return;
+  rbcc::TeamWorldSnapshot snap {};
+  snap.team = t;
+  snap.bombPlanted = game_state.IsBombPlanted ();
+  snap.roundTimeLeft = static_cast<float> (game_state.GetRoundTimeLeft ());
+  snap.opponentAggression = HumanCopycat::OpponentAggression (team);
+  snap.roundNumber = HumanCopycat::RoundNumber ();
+  int allies = 0, enemies = 0, total_money = 0;
+  for (int i = 0; i < std::min (game.MaxClients (), kGameMaxPlayers); ++i) {
+    auto e = game.PlayerOfIndex (i);
+    if (!e || e->free || !(e->v.flags & FL_CLIENT) || e->v.deadflag != DEAD_NO || e->v.health <= 0) continue;
+    const auto pt = game.GetPlayerTeam (e);
+    if (pt == team) ++allies;
+    else if (pt == Team::CT || pt == Team::Terrorist) ++enemies;
+  }
+  for (const auto &b : bots) {
+    if (b.team_ == team && Alive (b)) {
+      snap.slots.push_back (b.Index ());
+      snap.snipers.push_back (has_flag (b.pev->weapons, ystl::bit (Weapon::AWP)));
+      snap.carriers.push_back (b.has_c4_ || b.is_vip_ || b.has_hostage_);
+      total_money += b.money_amount_;
+    }
+  }
+  snap.aliveAllies = std::max (1, allies);
+  snap.aliveEnemies = enemies;
+  snap.avgMoney = !snap.slots.empty () ? (total_money / static_cast<int> (snap.slots.size ())) : 4000;
+  commander.dispatch (snap, &memory);
+  next_commander_dispatch[t] = game.Time () + 3.0f;
+}
 FinalActor &Actor (Bot &b) {
   auto &a = actors[b.Index ()];
   const int user = engfuncs.pfnGetPlayerUserId (b.Ent ());
@@ -81,13 +156,43 @@ FinalActor &Actor (Bot &b) {
     a.user = user;
     a.profile = profile;
     a.persona.seed (profile ^ run_seed ^ static_cast<uint32_t> (user));
-    a.persona.choose ();
+    const auto init_ctx = BuildUtilityContext (b);
+    a.persona.chooseUtility (init_ctx, &memory, a.profile);
+    a.curriculum = evolving_brain.selectCurriculum (a.profile, init_ctx, a.persona.random);
     a.next_strategy = game.Time () + 30.0f + static_cast<float> (a.persona.next () % 41u);
   }
   return a;
 }
+bool TeammatePlantingOrEscorted (const Bot &b) {
+  if (!game.MapIs (MapFlags::Demolition) || b.team_ != Team::Terrorist || game_state.IsBombPlanted ())
+    return false;
+  Bot *carrier = nullptr;
+  for (auto &mate : bots) {
+    if (mate.is_alive_ && mate.team_ == Team::Terrorist && mate.has_c4_) {
+      carrier = &mate;
+      break;
+    }
+  }
+  if (!carrier || carrier == &b)
+    return false;
+  if (carrier->in_bomb_zone_ || carrier->GetTaskId () == TaskId::PlantBomb || carrier->has_progress_bar_) {
+    return b.pev->origin.distance_sq (carrier->pev->origin) <= 1800.0f * 1800.0f;
+  }
+  // Keep the 2 closest teammates locked as dedicated C4 bodyguards/escorts
+  unsigned closer = 0;
+  const float own_d = b.pev->origin.distance_sq (carrier->pev->origin);
+  for (const auto &mate : bots) {
+    if (&mate != &b && &mate != carrier && mate.is_alive_ && mate.team_ == Team::Terrorist) {
+      const float md = mate.pev->origin.distance_sq (carrier->pev->origin);
+      if (md + 1.0f < own_d || (std::fabs (md - own_d) <= 1.0f && mate.Index () < b.Index ()))
+        ++closer;
+    }
+  }
+  return closer < 2;
+}
 bool Urgent (const Bot &b) {
   return b.has_c4_ || b.is_vip_ || b.has_hostage_ || b.has_progress_bar_ || game_state.IsBombPlanted () || game_state.IsRoundOver () ||
+         TeammatePlantingOrEscorted (b) ||
          (game.MapIs (MapFlags::Demolition | MapFlags::HostageRescue | MapFlags::Assassination) && game_state.GetRoundTimeLeft () < 30);
 }
 float Rand (float low, float high) {
@@ -129,8 +234,6 @@ float SightScore (Bot &b, const ystl::Vector &at, ystl::Vector *look = nullptr) 
       }
     }
   }
-  // Public bombsite anchors plus actual geometry, never enemy coordinates.
-  // From Dust2 Pit this can select the uphill A Long sightline toward A.
   if (game.MapIs (MapFlags::Demolition)) {
     unsigned checked = 0;
     for (const int node : graph.GetPoints (PointType::Goal)) {
@@ -153,8 +256,6 @@ float SightScore (Bot &b, const ystl::Vector &at, ystl::Vector *look = nullptr) 
       }
     }
   }
-  // Static double doors are often world geometry, not func_door entities.
-  // A long center ray with obstructed parallel side rays identifies such gaps.
   for (unsigned i = 0; i < 8; ++i) {
     const ystl::Vector angles (0, static_cast<float> (i) * 45.0f, 0);
     const auto direction = angles.forward ();
@@ -173,7 +274,6 @@ float SightScore (Bot &b, const ystl::Vector &at, ystl::Vector *look = nullptr) 
       best = s;
       target = eye + direction * 1000;
     }
-    // A lower floor or a boosted perch needs a sloped ray, not just a flat ray.
     if (tr.flFraction < 0.8f) {
       for (const float pitch : { -6.0f, -12.0f, 6.0f, 12.0f }) {
         const auto slope = ystl::Vector (pitch, angles.y, 0).forward ();
@@ -208,9 +308,17 @@ void HumanArena::Start (const char *map, uint32_t physics, const char *data) {
   environment = physics;
   const std::string base = data;
   memory_path = base.substr (0, base.size () - 5) + ".hfinal";
+  evo_path = base.substr (0, base.size () - 5) + ".hevo";
+  const auto parent_dir = std::filesystem::path (base).parent_path ();
+  nickname_path = (parent_dir / "nicknames_learned.hnicks").string ();
+  llm_path = (parent_dir / "english_llm.hllm").string ();
   ready = true;
   run_seed = static_cast<uint32_t> (ystl::rg (1, 0x7fffffff));
-  next_join = next_leave = next_boost_scan = 0;
+  internet_sim.clear ();
+  internet_sim.configure (cv_internet_min_interval.As<float> (), cv_internet_max_interval.As<float> (), cv_internet_max_bots.As<int> ());
+  next_join = 0.0f;
+  next_leave = game.Time () + internet_sim.sampleInterval (run_seed);
+  next_boost_scan = 0;
   completed_boosts = failed_boosts = repeat_fallbacks = departures = arrivals = 0;
   std::string error;
   std::error_code ec;
@@ -218,6 +326,12 @@ void HumanArena::Start (const char *map, uint32_t physics, const char *data) {
   std::fill (std::begin (death_serial), std::end (death_serial), -1);
   if (cv_final_memory && !memory.load (memory_path, map_name, environment, error) && std::filesystem::exists (memory_path, ec))
     game.Print ("[FINAL] Ignored memory: %s", error.c_str ());
+  if (cv_final_memory && !evolving_brain.load (evo_path, map_name, environment, error) && std::filesystem::exists (evo_path, ec))
+    game.Print ("[FINAL] Ignored evo brain: %s", error.c_str ());
+  if (cv_final_memory && std::filesystem::exists (nickname_path, ec))
+    nickname_engine.load (nickname_path, error);
+  if (cv_final_memory && std::filesystem::exists (llm_path, ec))
+    rbcc::englishLLM ().load (llm_path, error);
   doors.clear ();
   sight_cache.clear ();
   for (const char *kind : { "func_door", "func_door_rotating" })
@@ -242,41 +356,60 @@ void HumanArena::Stop () {
   for (auto &screen : screens)
     screen = SmokeScreen {};
   memory.clear ();
+  commander.clear ();
+  evolving_brain.clear ();
+  next_commander_dispatch[0] = next_commander_dispatch[1] = 0.0f;
   doors.clear ();
   sight_cache.clear ();
   ready = false;
 }
 bool HumanArena::Save () {
-  if (!ready || !cv_final_memory || !memory.dirty ())
+  if (!ready || !cv_final_memory || (!memory.dirty () && evolving_brain.totalCycles () == 0 && !nickname_engine.dirty () && !rbcc::englishLLM ().dirty ()))
     return true;
   std::error_code ec;
   std::filesystem::create_directories (std::filesystem::path (memory_path).parent_path (), ec);
   std::string error;
-  if (ec || !memory.save (memory_path, map_name, environment, error)) {
+  if (memory.dirty () && (ec || !memory.save (memory_path, map_name, environment, error))) {
     game.Print ("[FINAL] Memory save failed: %s", ec ? ec.message ().c_str () : error.c_str ());
     return false;
   }
+  if (!ec) evolving_brain.save (evo_path, map_name, environment, error);
+  if (!ec && nickname_engine.dirty () && !nickname_path.empty ()) nickname_engine.save (nickname_path, error);
+  if (!ec && rbcc::englishLLM ().dirty () && !llm_path.empty ()) rbcc::englishLLM ().save (llm_path, error);
   return true;
 }
 bool HumanArena::Dirty () {
-  return ready && cv_final_memory && memory.dirty ();
+  return ready && cv_final_memory && (memory.dirty () || nickname_engine.dirty () || rbcc::englishLLM ().dirty ());
 }
 void HumanArena::NewRound () {
   for (auto &screen : screens)
     screen = SmokeScreen {};
+  if (Enabled ()) {
+    memory.decayHeatmap (0.92f);
+    DispatchCommanderTeam (Team::Terrorist);
+    DispatchCommanderTeam (Team::CT);
+  }
   for (auto &b : bots) {
     CancelBoost (b.Index ());
     if (!Enabled ())
       continue;
     auto &a = Actor (b);
-    a.persona.choose ();
+    const auto uctx = BuildUtilityContext (b);
+    a.persona.chooseUtility (uctx, &memory, a.profile);
+    a.curriculum = evolving_brain.selectCurriculum (a.profile, uctx, a.persona.random);
     memory.strategy (a.profile, a.persona.current);
     a.goal = -1;
     a.patrol_zone = -1;
     a.hunt_steps = 0;
     a.hunt_continue = -1;
+    a.hunt_yaw = 0.0f;
+    a.current_hunt_yaw = 0.0f;
+    a.hunt_pitch = 0.0f;
+    a.current_hunt_pitch = 0.0f;
     a.stopping = false;
     a.boost_hold = false;
+    a.last_revenge = false;
+    a.last_headshot = false;
     a.next_strategy = game.Time () + 35.0f + static_cast<float> (a.persona.next () % 46u);
   }
 }
@@ -289,6 +422,10 @@ void HumanArena::ResetBot (Bot &b) {
   a.patrol_zone = -1;
   a.hunt_steps = 0;
   a.hunt_continue = -1;
+  a.hunt_yaw = 0.0f;
+  a.current_hunt_yaw = 0.0f;
+  a.hunt_pitch = 0.0f;
+  a.current_hunt_pitch = 0.0f;
   a.stopping = false;
   a.boost_hold = false;
   a.stop_until = 0;
@@ -305,6 +442,7 @@ void HumanArena::BeforeThink (Bot &b) {
     return;
   auto &a = Actor (b);
   const float now = game.Time ();
+  a.last_area.assign (AreaLabel (b, Feet (b)));
   if (a.patrol_zone >= 0 && !PatrolDuty (b)) {
     a.goal = -1;
     a.patrol_zone = -1;
@@ -336,8 +474,10 @@ void HumanArena::BeforeThink (Bot &b) {
         HumanChat::Queue (b, Chat::NoKeyword, false);
     }
     a.previous_top = a.persona.top;
+    const unsigned team_idx = static_cast<unsigned> (b.team_);
+    if (team_idx < 2 && now >= next_commander_dispatch[team_idx]) DispatchCommanderTeam (b.team_);
     if (now >= a.next_strategy && !Urgent (b) && a.patrol_zone < 0) {
-      a.persona.choose ();
+      a.persona.chooseUtility (BuildUtilityContext (b), &memory, a.profile);
       memory.strategy (a.profile, a.persona.current);
       a.next_strategy = now + 35 + static_cast<float> (a.persona.next () % 46u);
       a.goal = -1;
@@ -365,7 +505,7 @@ void HumanArena::BeforeThink (Bot &b) {
       b.Task ()->data = kInvalidNodeIndex;
     }
   }
-  if (a.goal >= 0 && graph.Exists (a.goal) && Feet (b).distance (graph[a.goal].origin - ystl::Vector (0, 0, 36)) < 85) {
+  if (a.goal >=0 && graph.Exists (a.goal) && Feet (b).distance (graph[a.goal].origin - ystl::Vector (0, 0, 36)) < 85) {
     const int visited_patrol = a.patrol_zone;
     if (visited_patrol >= 0 && visited_patrol == PatrolRegion (Feet (b))) {
       Visit (b, Feet (b), 0);
@@ -379,8 +519,11 @@ void HumanArena::BeforeThink (Bot &b) {
       }
     }
     a.patrol_zone = -1;
-    if (b.current_weapon_ == Weapon::AWP && !Urgent (b) && b.GetTaskId () == TaskId::Normal && game.IsNullEntity (b.enemy_) &&
+    if (has_flag (b.pev->weapons, ystl::bit (Weapon::AWP)) && !Urgent (b) && b.GetTaskId () == TaskId::Normal && game.IsNullEntity (b.enemy_) &&
         (a.persona.current == rbcc::FinalStrategy::Snipe || visited_patrol == 2)) {
+      if (b.current_weapon_ != Weapon::AWP) {
+        b.SelectWeaponById (Weapon::AWP);
+      }
       b.StartTask (TaskId::Camp, TaskPri::kCamp, kInvalidNodeIndex, now + Rand (2.5f, 7.0f), true);
     }
     else
@@ -395,15 +538,15 @@ bool HumanArena::Fresh (const Bot &b, const ystl::Vector &foot) {
   return !Enabled () || !cv_final_variety || memory.fresh (Profile (b), Core (foot));
 }
 float HumanArena::PlaceBias (const Bot &b, const ystl::Vector &foot) {
-  float value = Enabled () && cv_final_variety ? memory.bias (Profile (b), Core (foot)) : 0.0f;
+  const auto &a = actors[b.Index ()];
+  float value = Enabled () && cv_final_variety
+    ? memory.tacticalBias (Profile (b), Core (foot), a.persona.current, a.persona.risk)
+    : 0.0f;
   if (PatrolDuty (b)) {
-    const auto &a = actors[b.Index ()];
     const int zone = PatrolRegion (foot);
     if (zone >= 0)
       value += 650.0f / (1.0f + static_cast<float> (a.patrol_visits[zone])) + (zone != a.last_patrol ? 100.0f : 0.0f);
     else {
-      // Bias a real discovered frontier toward a rare area; never invent an
-      // overlay node or bypass its floor/hull/connected-path validation.
       const ystl::Vector anchors[] {
         { -250,  -750, 70   },
         { -1650, 1050, 20   },
@@ -426,8 +569,6 @@ bool HumanArena::PatrolMode (const Bot &b) {
   return Enabled () && cv_human_ct_patrol && map_name == "de_dust2" && b.team_ == Team::CT;
 }
 int HumanArena::PatrolRegion (const ystl::Vector &p) {
-  // Standard CS 1.6 Dust2 coordinates verified against the upstream 1238-node
-  // graph. Inputs are feet; no map node number, enemy coordinate or teleport.
   if (p.x >= -850 && p.x <= 450 && p.y >= -1050 && p.y <= -420)
     return 0;
   if (p.x >= -2100 && p.x <= -980 && p.y >= -220 && p.y <= 1510)
@@ -485,8 +626,6 @@ int HumanArena::PatrolGoal (Bot &b) {
     }
   int candidates[3] { -1, -1, -1 };
   float scores[3] { -1e30f, -1e30f, -1e30f };
-  // Scan every reachable node, not the old random sample of 96. This includes
-  // late-numbered spawn/tunnel/pit nodes, without depending on a specific GRAPH.
   for (const int node : queue) {
     const auto &path = graph[node];
     const auto foot = path.origin - ystl::Vector (0, 0, 36);
@@ -494,7 +633,8 @@ int HumanArena::PatrolGoal (Bot &b) {
     if (zone < 0 || node == start || path.origin.distance2d (b.pev->origin) < 160 ||
         has_flag (path.flags, NodeFlag::Ladder | NodeFlag::TerroristOnly) || mode_walls.IsNodeBlocked (path.origin) || !Fresh (b, foot))
       continue;
-    const float score = memory.bias (a.profile, Core (foot)) + static_cast<float> (a.persona.next () % 101u) - foot.distance (Feet (b)) * 0.015f;
+    const float score = memory.tacticalBias (a.profile, Core (foot), a.persona.current, a.persona.risk) +
+                        static_cast<float> (a.persona.next () % 101u) - foot.distance (Feet (b)) * 0.015f;
     if (score > scores[zone]) {
       scores[zone] = score;
       candidates[zone] = node;
@@ -520,7 +660,7 @@ int HumanArena::PatrolGoal (Bot &b) {
     }
   }
   if (chosen < 0)
-    return -1; // geometry exploration can handle an unmapped area
+    return -1;
   if (chosen != a.hunt_continue)
     a.hunt_steps = 0;
   a.hunt_continue = chosen;
@@ -552,8 +692,8 @@ int HumanArena::Goal (Bot &b) {
   int best = -1;
   float highest = -1e30f;
   for (int pass = 0; pass < 2 && best < 0; ++pass)
-    for (int n = 0; n < std::min (count, 96); ++n) {
-      const int node = count <= 96 ? n : static_cast<int> (a.persona.next () % static_cast<uint32_t> (count));
+    for (int n = 0; n < std::min (count, 160); ++n) {
+      const int node = count <= 160 ? n : static_cast<int> (a.persona.next () % static_cast<uint32_t> (count));
       if (!graph.Exists (node) || node == b.current_node_index_ || has_flag (graph[node].flags, NodeFlag::Ladder) ||
           mode_walls.IsNodeBlocked (graph[node].origin))
         continue;
@@ -566,11 +706,16 @@ int HumanArena::Goal (Bot &b) {
       float score = PlaceBias (b, foot) + static_cast<float> (a.persona.next () % 301u) - distance * 0.025f;
       if (has_contact && (a.persona.current == rbcc::FinalStrategy::Push || a.persona.current == rbcc::FinalStrategy::Flank))
         score += 400.0f - contact.distance (graph[node].origin) * 0.2f;
-      if (a.persona.current == rbcc::FinalStrategy::Scout)
+      if (a.persona.current == rbcc::FinalStrategy::Scout) {
         score += distance * 0.07f;
-      if (a.persona.current == rbcc::FinalStrategy::Lurk)
-        score += has_flag (graph[node].flags, NodeFlag::Camp) ? 100.0f : 0.0f;
-      if (b.current_weapon_ == Weapon::AWP && (a.persona.current == rbcc::FinalStrategy::Snipe || a.persona.risk < 0.55f)) {
+        if (has_flag (graph[node].flags, NodeFlag::Camp | NodeFlag::Crouch | NodeFlag::Narrow))
+          score += 145.0f;
+      }
+      if (a.persona.current == rbcc::FinalStrategy::Lurk || a.persona.current == rbcc::FinalStrategy::Flank) {
+        if (has_flag (graph[node].flags, NodeFlag::Camp | NodeFlag::Crouch))
+          score += 135.0f;
+      }
+      if (has_flag (b.pev->weapons, ystl::bit (Weapon::AWP)) && (a.persona.current == rbcc::FinalStrategy::Snipe || a.persona.risk < 0.55f)) {
         if (has_flag (graph[node].flags, NodeFlag::Sniper | NodeFlag::Camp))
           score += 150;
         if (n < 20)
@@ -592,6 +737,29 @@ int HumanArena::Goal (Bot &b) {
   }
   return best;
 }
+bool HumanArena::AutonomousOverride (Bot &b) {
+  if (!Enabled () || !cv_learning_level4)
+    return false;
+  const bool hard_engine_rule = b.has_progress_bar_ || b.HasBombTask () || !b.buying_finished_ || b.IsOnLadder () || b.IsInWater ();
+  return evolving_brain.shouldOverrideLegacyFsm (Actor (b).profile, hard_engine_rule);
+}
+float HumanArena::AutonomyRatio (const Bot &b) {
+  if (!Enabled () || !cv_learning_level4)
+    return 0.0f;
+  const bool hard_engine_rule = b.has_progress_bar_ || b.HasBombTask () || !b.buying_finished_;
+  return evolving_brain.autonomyRatio (actors[b.Index ()].profile, hard_engine_rule);
+}
+const char *HumanArena::Curriculum (const Bot &b) {
+  return Enabled () ? rbcc::curriculumGoalName (actors[b.Index ()].curriculum) : "";
+}
+void HumanArena::ChampionDNA (std::array<float, 5> &abcdEtaOut, float &tauScaleOut) {
+  const auto &champ = evolving_brain.evoPool ().champion ();
+  abcdEtaOut = champ.hebbianGenes;
+  tauScaleOut = champ.liquidTauScale;
+}
+uint32_t HumanArena::EvoGenerations () {
+  return evolving_brain.evoPool ().generations ();
+}
 bool HumanArena::Camp (Bot &b, bool hide) {
   if (!Enabled () || !cv_final_variety)
     return true;
@@ -604,7 +772,7 @@ bool HumanArena::Camp (Bot &b, bool hide) {
     a.stopping = true;
     a.stop = foot;
     a.stop_until = game.Time () + Rand (hide ? 2.0f : 2.5f, hide ? 6.0f : 8.0f) * (1.15f - a.persona.risk * 0.4f);
-    Visit (b, foot, hide ? 2 : (b.current_weapon_ == Weapon::AWP ? 3 : 1));
+    Visit (b, foot, hide ? 2 : (has_flag (b.pev->weapons, ystl::bit (Weapon::AWP)) ? 3 : 1));
     SightScore (b, foot, &a.watch);
   }
   if (!emergency && game.Time () > a.stop_until) {
@@ -616,27 +784,64 @@ bool HumanArena::Camp (Bot &b, bool hide) {
   return true;
 }
 void HumanArena::IdleLook (Bot &b, ystl::Vector &desired) {
-  if (PatrolActive (b) && b.GetTaskId () == TaskId::Normal && game.IsNullEntity (b.enemy_)) {
+  if (Enabled () && b.GetTaskId () == TaskId::Normal && game.IsNullEntity (b.enemy_) &&
+      !has_flag (b.states_, Sense::SeeingEnemy | Sense::HearingEnemy)) {
     auto &a = Actor (b);
     if (game.Time () >= a.next_hunt_look) {
-      a.next_hunt_look = game.Time () + 0.8f;
-      a.hunt_yaw = (a.persona.next () % 3u == 0u ? -32.0f : a.persona.next () % 3u == 0u ? 32.0f : 0.0f);
+      a.next_hunt_look = game.Time () + 1.15f + static_cast<float> (a.persona.next () % 110u) * 0.01f;
+      const uint32_t r = a.persona.next ();
+      float candidate_yaw = 0.0f;
+      float candidate_pitch = (static_cast<float> ((r >> 8u) % 601u) * 0.01f - 3.0f);
+      const unsigned pick = r % 5u;
+      const float mag = 14.0f + static_cast<float> ((r >> 16u) % 200u) * 0.1f;
+      if (pick == 0u) candidate_yaw = -mag;
+      else if (pick == 1u) candidate_yaw = mag;
+      else if (pick == 2u) candidate_yaw = (static_cast<float> ((r >> 4u) % 160u) * 0.1f - 8.0f);
+      if (std::fabs (candidate_yaw) > 1.0f) {
+        auto sight = desired;
+        sight.y = rbcc::angleDelta (sight.y + candidate_yaw, 0.0f);
+        TraceResult tr {};
+        engfuncs.pfnTraceLine (b.GetEyesPos (), b.GetEyesPos () + ystl::Vector (-sight.x, sight.y, 0).forward () * 500, 1, b.Ent (), &tr);
+        if (tr.fStartSolid || tr.fAllSolid || tr.flFraction <= 0.32f) {
+          candidate_yaw = 0.0f;
+          candidate_pitch *= 0.4f;
+        }
+      }
+      a.hunt_yaw = candidate_yaw;
+      a.hunt_pitch = candidate_pitch;
     }
-    // Small, ordinary view sweeps while advancing; combat/hearing immediately
-    // takes priority. The aim controller still limits all turn speed/error.
-    auto sight = desired;
-    sight.y += a.hunt_yaw;
-    TraceResult tr {};
-    engfuncs.pfnTraceLine (b.GetEyesPos (), b.GetEyesPos () + ystl::Vector (-sight.x, sight.y, 0).forward () * 500, 1, b.Ent (), &tr);
-    if (!tr.fStartSolid && !tr.fAllSolid && tr.flFraction > 0.25f)
-      desired = sight;
+    a.current_hunt_yaw += (a.hunt_yaw - a.current_hunt_yaw) * 0.11f;
+    a.current_hunt_pitch += (a.hunt_pitch - a.current_hunt_pitch) * 0.11f;
+    if (std::fabs (a.current_hunt_yaw) > 0.15f || std::fabs (a.current_hunt_pitch) > 0.10f) {
+      desired.y = rbcc::angleDelta (desired.y + a.current_hunt_yaw, 0.0f);
+      desired.x = std::clamp (desired.x + a.current_hunt_pitch, -89.0f, 89.0f);
+    }
   }
-  if (Enabled () && (b.current_weapon_ == Weapon::AWP || actors[b.Index ()].boost_hold) && game.IsNullEntity (b.enemy_) &&
+  if (Enabled () && (has_flag (b.pev->weapons, ystl::bit (Weapon::AWP)) || actors[b.Index ()].boost_hold) && game.IsNullEntity (b.enemy_) &&
       b.GetTaskId () == TaskId::Camp) {
     auto &a = Actor (b);
     if (a.stopping)
       desired = a.watch;
   }
+#if !defined(YSTL_TESTS)
+  if (Enabled () && map_name == "de_dust2" && b.current_weapon_ == Weapon::AWP && game.IsNullEntity (b.enemy_) &&
+      !has_flag (b.states_, Sense::SeeingEnemy | Sense::HearingEnemy) && b.pev->velocity.length2d () < 45.0f) {
+    const int slot = b.Index ();
+    const int awp_idx = rbcc::proTacticalEngine ().awpSpotForSlot (slot);
+    if (b.team_ == Team::CT && awp_idx >= 0 && awp_idx < static_cast<int> (rbcc::CTAwpSpotId::Count)) {
+      const auto &sp = rbcc::ProTactical10v10Engine::ctAwpSpots ()[static_cast<size_t> (awp_idx)];
+      if (b.pev->origin.distance2d (ystl::Vector (sp.origin.x, sp.origin.y, sp.origin.z)) < 240.0f) {
+        desired = ystl::Vector (sp.watchAngles.x, sp.watchAngles.y, 0.0f);
+      }
+    }
+    else if (b.team_ == Team::Terrorist && awp_idx >= 0 && awp_idx < static_cast<int> (rbcc::TAwpSpotId::Count)) {
+      const auto &sp = rbcc::ProTactical10v10Engine::tAwpSpots ()[static_cast<size_t> (awp_idx)];
+      if (b.pev->origin.distance2d (ystl::Vector (sp.origin.x, sp.origin.y, sp.origin.z)) < 240.0f) {
+        desired = ystl::Vector (sp.watchAngles.x, sp.watchAngles.y, 0.0f);
+      }
+    }
+  }
+#endif
 }
 float HumanArena::SniperWatch (Bot &b, const ystl::Vector &foot, ystl::Vector &desired) {
   return Enabled () ? SightScore (b, foot, &desired) : 0;
@@ -661,10 +866,8 @@ bool HumanArena::ObjectiveSmoke (Bot &b, bool defuse) {
     return can_wait && now < screen.wait_until && thrower && Alive (*thrower) && thrower->Ent ()->serialnumber == screen.serial;
   }
   if (screen.wait_until > now)
-    return false; // another worksite already has this team's one active request
+    return false;
 
-  // Offset the screen toward a recent public callout, otherwise a known approach.
-  // Keep it close enough to cover the worker even if no contact has been heard.
   ystl::Vector direction {};
   edict_t *contact = nullptr;
   ystl::Vector heard {};
@@ -698,7 +901,8 @@ bool HumanArena::ObjectiveSmoke (Bot &b, bool defuse) {
         (&candidate == &b && !can_wait))
       continue;
     const float distance = candidate.pev->origin.distance (site);
-    if (distance > 700 || (!game.IsNullEntity (candidate.enemy_) && distance < 250) || !candidate.IsGrenadeTargetSafe (Weapon::Smoke, target))
+    if (distance > 700 || !game.IsNullEntity (candidate.enemy_) || has_flag (candidate.states_, Sense::SeeingEnemy) ||
+        !candidate.IsGrenadeTargetSafe (Weapon::Smoke, target))
       continue;
     auto velocity = candidate.CalcThrow (candidate.GetEyesPos (), target);
     if (velocity.length_sq () < 100)
@@ -716,7 +920,6 @@ bool HumanArena::ObjectiveSmoke (Bot &b, bool defuse) {
   screen = { selected->Index (), selected->Ent ()->serialnumber, site, now + (can_wait ? 4.5f : 0.0f), now + 12.0f, defuse };
   selected->throw_ = target;
   selected->states_ |= Sense::ThrowSmoke;
-  // Preserve the resumable PlantBomb/DefuseBomb task under the normal throw task.
   selected->StartTask (TaskId::ThrowSmoke, TaskPri::kThrow, kInvalidNodeIndex, now + 4.0f, false);
   return can_wait;
 }
@@ -746,6 +949,55 @@ int HumanArena::Rank (const Bot &b) {
 float HumanArena::Risk (const Bot &b) {
   return Enabled () ? actors[b.Index ()].persona.risk : 0.5f;
 }
+const char *HumanArena::Strategy (const Bot &b) {
+  return Enabled () ? rbcc::strategyName (actors[b.Index ()].persona.current) : "";
+}
+const char *HumanArena::Directive (const Bot &b) {
+  const unsigned t = static_cast<unsigned> (b.team_);
+  return (Enabled () && t < 2) ? rbcc::teamDirectiveName (commander.order (t).directive) : "";
+}
+const char *HumanArena::Role (const Bot &b) {
+  const unsigned t = static_cast<unsigned> (b.team_);
+  const int idx = b.Index ();
+  return (Enabled () && t < 2 && idx >= 0 && idx < 32) ? rbcc::tacticalRoleName (commander.order (t).roles[static_cast<size_t> (idx)]) : "";
+}
+int HumanArena::Streak (const Bot &b) {
+  return Enabled () ? actors[b.Index ()].persona.streak : 0;
+}
+void HumanArena::EpisodicContext (const Bot &b, ystl::String &opponent, ystl::String &area, bool &revenge, bool &headshot) {
+  if (!Enabled ()) {
+    opponent.clear (); area.clear (); revenge = false; headshot = false;
+    return;
+  }
+  const auto &a = actors[b.Index ()];
+  opponent = a.last_opponent;
+  area = a.last_area.empty () ? ystl::String (AreaLabel (b, Feet (b))) : a.last_area;
+  revenge = a.last_revenge;
+  headshot = a.last_headshot;
+}
+void HumanArena::NoteHeadshot (edict_t *killer, edict_t *) {
+  if (!Enabled () || !killer) return;
+  if (auto b = bots[killer]) {
+    actors[b->Index ()].last_headshot = true;
+  }
+}
+void HumanArena::RoundEnd (Team winner) {
+  if (!Enabled () || (winner != Team::CT && winner != Team::Terrorist)) return;
+  commander.rewardDirective (0, winner == Team::Terrorist ? 1.0f : -0.8f);
+  commander.rewardDirective (1, winner == Team::CT ? 1.0f : -0.8f);
+  for (auto &b : bots) {
+    auto &a = Actor (b);
+    const float r = (b.team_ == winner ? 0.45f : -0.35f) + (Alive (b) ? 0.15f : 0.0f);
+    a.persona.rewardStrategy (r);
+    memory.recordStrategyOutcome (a.profile, a.persona.current, r);
+    evolving_brain.recordCurriculumOutcome (a.profile, a.curriculum, r);
+    evolving_brain.evoPool ().reportFitness (static_cast<size_t> (b.Index ()), r);
+  }
+  if (cv_learning_level5) {
+    uint32_t evo_seed = run_seed ^ (HumanCopycat::RoundNumber () * 2654435761u);
+    evolving_brain.evoPool ().evolveGeneration (evo_seed);
+  }
+}
 void HumanArena::Damage (edict_t *victim, edict_t *, int damage) {
   if (!Enabled () || !cv_final_emotions)
     return;
@@ -762,16 +1014,47 @@ void HumanArena::Death (edict_t *killer, edict_t *victim) {
     return;
   death_serial[n] = victim->serialnumber;
   death_time[n] = game.Time ();
+  const auto victimFoot = victim->v.origin - ystl::Vector (0, 0, 36);
+  memory.recordSpatialEvent (Core (victimFoot), 1.0f, 0.0f);
+  HumanExplore::ReinforceNear (victimFoot, game.GetPlayerTeam (victim), -0.75f);
+  if (killer && !killer->free && killer != victim && (killer->v.flags & FL_CLIENT)) {
+    const auto killerFoot = killer->v.origin - ystl::Vector (0, 0, 36);
+    memory.recordSpatialEvent (Core (killerFoot), 0.0f, 0.9f);
+    HumanExplore::ReinforceNear (killerFoot, game.GetPlayerTeam (killer), 0.85f);
+  }
   if (auto b = bots[victim]) {
     auto &a = Actor (*b);
+    memory.recordStrategyOutcome (a.profile, a.persona.current, -0.65f);
+    evolving_brain.recordCurriculumOutcome (a.profile, a.curriculum, -0.55f);
+    evolving_brain.evoPool ().reportFitness (static_cast<size_t> (b->Index ()), -0.55f);
     a.persona.died ();
-    a.persona.choose ();
+    if (killer && killer != victim && !killer->free) {
+      a.last_opponent.assign (killer->v.netname.chars ());
+      a.last_nemesis = a.last_opponent;
+    }
+    a.last_area.assign (AreaLabel (*b, victimFoot));
+    a.last_revenge = false;
+    a.last_headshot = false;
+    a.persona.chooseUtility (BuildUtilityContext (*b), &memory, a.profile);
     memory.strategy (a.profile, a.persona.current);
     a.next_strategy = game.Time () + Rand (25, 60);
   }
   if (killer != victim)
-    if (auto b = bots[killer])
-      Actor (*b).persona.killed (game.GetPlayerTeam (killer) == game.GetPlayerTeam (victim));
+    if (auto b = bots[killer]) {
+      auto &a = Actor (*b);
+      const bool friendly = game.GetPlayerTeam (killer) == game.GetPlayerTeam (victim);
+      a.persona.killed (friendly);
+      memory.recordStrategyOutcome (a.profile, a.persona.current, friendly ? -0.9f : 0.75f);
+      evolving_brain.recordCurriculumOutcome (a.profile, a.curriculum, friendly ? -0.9f : 0.80f);
+      evolving_brain.evoPool ().reportFitness (static_cast<size_t> (b->Index ()), friendly ? -0.9f : 0.85f);
+      if (!friendly && victim && !victim->free) {
+        const ystl::String vname (victim->v.netname.chars ());
+        a.last_revenge = (!a.last_nemesis.empty () && a.last_nemesis == vname);
+        if (a.last_revenge) a.last_nemesis.clear ();
+        a.last_opponent = vname;
+        a.last_area.assign (AreaLabel (*b, Feet (*b)));
+      }
+    }
 }
 bool HumanArena::Boosting (const Bot &b) {
   for (const auto &p : pairs)
@@ -910,7 +1193,6 @@ bool HumanArena::Motor (Bot &b, HumanCommand &cmd, ystl::Vector &desired, bool a
     Visit (*climber, p.landing, 4);
     ++completed_boosts;
     CancelBoost (b.Index ());
-    // Use the earned vantage briefly before resuming varied navigation.
     auto &a = Actor (*climber);
     a.stopping = a.boost_hold = true;
     a.stop = landing;
@@ -958,46 +1240,105 @@ int HumanArena::Capacity () {
   return rbcc::finalCapacity (game.MaxClients (), bots.GetHumansCount (), cv_autovacate_keep_slots.As<int> ());
 }
 bool HumanArena::ReadyToJoin () {
-  return !LobbyEnabled () || game.Time () >= next_join;
+  if (!LobbyEnabled ())
+    return true;
+  const int min_initial = std::min (Capacity (), rbcc::kInternetModeMinInitialBots);
+  if (!internet_sim.initialFillDone () || bots.GetBotCount () < min_initial)
+    return game.Time () >= next_join;
+  return game.Time () >= next_join;
 }
 int HumanArena::LobbyTarget (int desired, int current) {
   if (!LobbyEnabled ())
-    return desired;
+    return std::min (desired, Capacity ());
+  internet_sim.configure (cv_internet_min_interval.As<float> (), cv_internet_max_interval.As<float> (), cv_internet_max_bots.As<int> ());
+  const int min_initial = std::min (Capacity (), rbcc::kInternetModeMinInitialBots);
+  if (desired > 0)
+    desired = std::max (desired, min_initial);
   desired = std::clamp (desired, 0, Capacity ());
+  if (cv_internet_mode) {
+    desired = internet_sim.stepTarget (game.Time (), desired, current, bots.GetHumansCount (), game.MaxClients (), run_seed);
+  }
+  if (current < min_initial && desired > current)
+    return desired;
+  if (current > desired)
+    return desired;
   return ReadyToJoin () ? desired : std::min (desired, current);
 }
 bool HumanArena::MayLeave (const Bot &b) {
-  return !LobbyEnabled () || (game.Time () >= next_leave && !Boosting (b) && !b.has_progress_bar_ && !b.has_c4_);
+  if (!LobbyEnabled ())
+    return true;
+  const int min_initial = std::min (Capacity (), rbcc::kInternetModeMinInitialBots);
+  // Minimum 16 bots must spawn at game start before Internet Mode simulation is allowed to disconnect any bot
+  if (!internet_sim.initialFillDone () || bots.GetBotCount () <= min_initial)
+    return false;
+  return game.Time () >= next_leave && !Boosting (b) && !b.has_progress_bar_ && !b.has_c4_;
 }
 void HumanArena::Leaving (Bot &b) {
   if (!LobbyEnabled ())
     return;
   CancelBoost (b.Index ());
   ++departures;
-  next_join = std::max (next_join, game.Time () + Rand (3, 12));
-  next_leave = game.Time () + Rand (8, 18);
+  internet_sim.configure (cv_internet_min_interval.As<float> (), cv_internet_max_interval.As<float> (), cv_internet_max_bots.As<int> ());
+  internet_sim.recordLeave (game.Time (), run_seed);
+  const float min_i = cv_internet_min_interval.As<float> ();
+  const float max_i = std::max (min_i, cv_internet_max_interval.As<float> ());
+  next_join = std::max (next_join, game.Time () + Rand (min_i, max_i));
+  next_leave = game.Time () + Rand (min_i, max_i);
 }
 void HumanArena::Joined (Bot &b) {
   if (ready)
     Actor (b);
   if (LobbyEnabled ()) {
     ++arrivals;
-    next_join = game.Time () + Rand (cv_final_join_min.As<float> (), std::max (cv_final_join_min.As<float> (), cv_final_join_max.As<float> ()));
+    internet_sim.configure (cv_internet_min_interval.As<float> (), cv_internet_max_interval.As<float> (), cv_internet_max_bots.As<int> ());
+    internet_sim.recordJoin (game.Time (), run_seed);
+    const float min_i = cv_internet_min_interval.As<float> ();
+    const float max_i = std::max (min_i, cv_internet_max_interval.As<float> ());
+    const int min_initial = std::min (Capacity (), rbcc::kInternetModeMinInitialBots);
+    // Rapidly spawn at least 16 bots (and full initial quota) at game start before 10-30s Internet Simulation works
+    if (internet_sim.initialFillDone () && bots.GetBotCount () >= min_initial &&
+        bots.GetBotCount () >= std::max (min_initial, std::min (cv_quota.As<int> (), Capacity ()) - 1)) {
+      next_join = game.Time () + Rand (min_i, max_i);
+    }
+    else {
+      next_join = game.Time () + 0.05f;
+      next_leave = std::max (next_leave, game.Time () + Rand (min_i, max_i));
+    }
   }
 }
+ystl::String HumanArena::GenerateUniqueNickname () {
+  std::vector<std::string> active;
+  for (int i = 0; i < std::min (game.MaxClients (), kGameMaxPlayers); ++i) {
+    auto e = game.PlayerOfIndex (i);
+    if (e && !e->free && (e->v.flags & FL_CLIENT) && !e->v.netname.str ().empty ()) {
+      active.emplace_back (e->v.netname.chars ());
+    }
+  }
+  const std::string gen = nickname_engine.generateUnique (run_seed, active);
+  return ystl::String (gen.c_str ());
+}
+void HumanArena::ObserveHumanNickname (ystl::StringRef name) {
+  if (name.empty ()) return;
+  nickname_engine.observePlayer (std::string (name.chars (), name.size ()));
+}
 void HumanArena::Status () {
-  game.Print ("[FINAL 4.3.3] enabled=%d memory_profiles=%u decisions=%u repeat_fallbacks=%u boosts=%u aborted=%u lobby=%d bots=%d capacity=%d "
-              "joins=%u leaves=%u",
-    Enabled () ? 1 : 0, static_cast<unsigned> (memory.size ()), memory.sequence (), repeat_fallbacks, completed_boosts, failed_boosts,
-    LobbyEnabled () ? 1 : 0, bots.GetBotCount (), LobbyEnabled () ? Capacity () : game.MaxClients (), arrivals, departures);
+  const auto &pro = rbcc::proTacticalEngine ();
+  game.Print ("[FINAL Level-5 Apex + Pro 10v10 Tactical AI] formation="%s" ct_strat="%s" t_strat="%s"",
+    rbcc::dynamicFormationName (pro.activeFormation ()),
+    rbcc::ctStrategyName (pro.activeCtStrategy ()),
+    rbcc::tStrategyName (pro.activeTStrategy ()));
+  game.Print ("[FINAL Level-5 Apex + Internet Mode (10-30s | Max 21 Bots) + NickGen=%u + EnglishLLM=%zu]"
+    , nickname_engine.generatedCount (), rbcc::englishLLM ().vocabSize ());
+  game.Print ("[FINAL Level-5 Apex Neuroevolution (~99.9%% Autonomous | Single-DLL=%d | 21-Bot Internet Mode)] enabled=%d evo_gen=%u crossovers=%u mutations=%u unshackled=%u bots=%d humans=%d target_bots=%d",
+    cv_single_dll_mode.As<int> (), Enabled () ? 1 : 0, evolving_brain.evoPool ().generations (), evolving_brain.evoPool ().crossovers (), evolving_brain.evoPool ().mutations (), evolving_brain.totalCycles (), bots.GetBotCount (), bots.GetHumansCount (), Capacity ());
   for (const auto &b : bots) {
     const auto &a = actors[b.Index ()];
     if (PatrolMode (b))
       game.Print ("[CT Hunt] %s target_region=%d swept_tspawn=%u swept_tunnel=%u swept_pit=%u", b.pev->netname.chars (), a.patrol_zone,
         a.patrol_visits[0], a.patrol_visits[1], a.patrol_visits[2]);
-    game.Print ("[FINAL] %s strategy=%s mood=%s risk=%.2f rank=%d top=%d frags=%.0f", b.pev->netname.chars (),
-      rbcc::strategyName (a.persona.current), rbcc::moodName (a.persona.mood), static_cast<double> (a.persona.risk), a.persona.rank,
-      a.persona.top ? 1 : 0, static_cast<double> (b.pev->frags));
+    const auto &g = evolving_brain.evoPool ().genome (static_cast<size_t> (b.Index ()));
+    game.Print ("[FINAL L5] %s autonomy=%.1f%% dna_gen=%u fit=%.2f curriculum=%s dir=%s role=%s strategy=%s mood=%s", b.pev->netname.chars (),
+      static_cast<double> (AutonomyRatio (b) * 100.0f), g.generation, static_cast<double> (g.fitness), Curriculum (b), Directive (b), Role (b), rbcc::strategyName (a.persona.current), rbcc::moodName (a.persona.mood));
   }
 }
 #if defined(YSTL_TESTS)

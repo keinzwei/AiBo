@@ -1,4 +1,4 @@
-// FINAL 4.3.3 adaptive HUMAN AIM. GPL-2.0-or-later.
+// FINAL 4.3.5 adaptive HUMAN AIM. GPL-2.0-or-later.
 #pragma once
 namespace rbcc {
 struct Frame;
@@ -14,6 +14,8 @@ public:
   static void ResetBot (Bot &bot);
   static void RecordHuman (edict_t *human, const rbcc::Frame &frame);
   static void WeaponUpdate (edict_t *player, int active, unsigned weapon, int clip);
+  static void NotifyBotShot (Bot &bot, unsigned weapon);
+  static bool HoldingSecondary (const Bot &bot);
   static void Damage (edict_t *victim, edict_t *attacker, int damage, int bits);
   static void Death (edict_t *killer, edict_t *victim, bool head);
   static void Heard (Bot &bot, edict_t *source, const ystl::Vector &point, float started);

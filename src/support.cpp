@@ -90,7 +90,7 @@ void Support::DecalTrace (Trace::Result *result, int decal_index) {
 void Support::CheckWelcome () {
   // the purpose of this function, is  to send quick welcome message, to the listenserver entity
 
-  if (game.IsDedicatedServer () || !cv_display_welcome_text || !need_to_send_welcome_) {
+  if (cv_single_dll_mode || game.IsDedicatedServer () || !cv_display_welcome_text || !need_to_send_welcome_) {
     return;
   }
 

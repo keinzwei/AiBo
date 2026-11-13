@@ -1396,7 +1396,7 @@ void Game::Frame () {
   // update lightstyle animations
   illum.AnimateLight ();
 
-  if (graph.HasEditFlag (GraphEdit::On) && graph.HasEditor ()) {
+  if (!cv_single_dll_mode && !analyzer.IsAnalyzing () && graph.HasEditFlag (GraphEdit::On) && graph.HasEditor ()) {
     graph.Frame ();
   }
 

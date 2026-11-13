@@ -373,15 +373,26 @@ void Bot::TrackEnemies () {
     enemy_body_part_set_ = nullptr;
   }
 
-  // recover from knife, if has anything to fire at enemy
-  if (has_flag (states_, Sense::SeeingEnemy) && UsesKnife () && !IsKnifeMode () && HasAnyAmmo () && IsOnFloor ()) {
-    auto enemy = enemy_;
+  // recover from knife or grenade immediately when an enemy is visible so the bot starts shooting
+  if (has_flag (states_, Sense::SeeingEnemy) && !IsKnifeMode () && HasAnyAmmo ()) {
+    const bool holding_grenade = !IsGrenadeWar () &&
+      (is_using_grenade_ || current_weapon_ == Weapon::Flashbang || current_weapon_ == Weapon::Smoke || current_weapon_ == Weapon::Explosive);
+    if (holding_grenade) {
+      is_using_grenade_ = false;
+      aim_flags_ &= ~AimFlags::Grenade;
+      states_ &= ~(Sense::ThrowExplosive | Sense::ThrowFlashbang | Sense::ThrowSmoke);
+      pev->button &= ~IN_ATTACK;
+      SelectBestWeapon ();
+    }
+    else if (UsesKnife () && IsOnFloor ()) {
+      auto enemy = enemy_;
 
-    if (!game.IsNullEntity (enemy)) {
-      const auto distance_sq = pev->origin.distance_sq (enemy->v.origin);
+      if (!game.IsNullEntity (enemy)) {
+        const auto distance_sq = pev->origin.distance_sq (enemy->v.origin);
 
-      if (distance_sq > ystl::sqrf (240.f)) {
-        SelectBestWeapon ();
+        if (distance_sq > ystl::sqrf (240.f)) {
+          SelectBestWeapon ();
+        }
       }
     }
   }
@@ -688,7 +699,12 @@ bool Bot::LookupEnemies () {
           other.last_enemy_origin_ = new_enemy->v.origin;
           other.see_enemy_timer_.start ();
           other.states_ |= (Sense::SuspectEnemy | Sense::HearingEnemy);
-          other.aim_flags_ |= AimFlags::LastEnemy;
+          if (other.SeesEntity (new_enemy->v.origin, true)) {
+            other.aim_flags_ |= AimFlags::LastEnemy;
+          }
+          else {
+            other.aim_flags_ |= AimFlags::PredictPath;
+          }
         }
       }
       return true;
@@ -840,28 +856,29 @@ ystl::Vector Bot::GetEnemyBodyOffset () {
   };
 
   if (game.IsPlayerEntity (enemy_)) {
-    // now take in account different parts of enemy body
+    // now take in account different parts of enemy body:
+    // allow skill-based headshots on opening shots and through spray control without hard head-bone Aimlock
     if (has_flag (vis_parts, Visibility::Head) && has_flag (vis_parts, Visibility::Body)) {
       auto headshot_pct = difficulty_data_->headshot_pct;
 
       // cache pause state to avoid multiple expensive calls
       const bool should_pause = NeedToPauseFiring (distance);
-      const bool recoil_high = IsRecoilHigh ();
+      const bool recoil_high = IsRecoilHigh () || ystl::abs (pev->punchangle.x) > 0.85f;
 
-      // with too much recoil, shotgun, or when pause is needed, reduce headshot chance
+      // once spraying, release head bone lock so headshots come naturally from spray control & recoil pull-down
       if (recoil_high || should_pause || (UsesShotgun () && distance > kSprayDistance)) {
-        headshot_pct = distance > kSprayDistance ? 6 : ystl::min (headshot_pct, 20);
+        headshot_pct = distance > kSprayDistance ? 12 : ystl::min (headshot_pct, 30);
       }
 
       // re-roll head or body choice on a slow timer to keep aim steady
       if (enemy_body_part_set_ != enemy_) {
         if (head_roll_timer_.elapsed ()) {
-          head_roll_timer_.start (rg (0.5f, 1.0f));
+          head_roll_timer_.start (rg (0.6f, 1.1f));
           enemy_body_part_set_ = rg.chance (headshot_pct) ? enemy_ : nullptr;
         }
       }
       else if (recoil_high || should_pause) {
-        enemy_body_part_set_ = nullptr; // break head lock for the duration of the spray
+        enemy_body_part_set_ = nullptr; // release head lock during spray so spray control governs hits
       }
 
       if (enemy_body_part_set_ == enemy_) {
@@ -874,9 +891,9 @@ ystl::Vector Bot::GetEnemyBodyOffset () {
       else {
         spot = enemy_->v.origin;
 
-        // expert aims high on body (toward neck), use enemy's size rather than bot's own view offset
-        if (difficulty_ == Difficulty::Expert) {
-          spot.z += enemy_->v.size.z * 0.1f;
+        // skilled bots aim at upper chest / neck so spray control & recoil naturally score headshots
+        if (difficulty_ >= Difficulty::Hard) {
+          spot.z += enemy_->v.size.z * 0.12f;
         }
       }
     }
@@ -903,12 +920,25 @@ ystl::Vector Bot::GetEnemyBodyOffset () {
   }
 
   // add recoil compensation for non-sniper weapons before setting m_lastenemyorigin
-  if (!UsesSniper () && !UsesKnife () && distance > kSprayDistance) {
-    // pull aim down to counter recoil using smoothed punch angle
-    const float target = ystl::tanf (ystl::deg2rad (pev->punchangle.x)) * distance;
-    recoil_compensation_ += (target - recoil_compensation_) * ystl::min (1.0f, frame_interval_ * 10.0f);
-
+  if (!UsesSniper () && !UsesKnife ()) {
+    // In GoldSrc/CS 1.6, upward recoil sets pev->punchangle.x negative and applies 2x punchangle to bullet rays.
+    // Use positive magnitude so subtracting recoil_compensation_ pulls aim DOWN (especially for AK47 / M4A4 spray control).
+    const bool is_ak_or_m4 = (current_weapon_ == Weapon::AK47 || current_weapon_ == Weapon::M4A1);
+    const float recoil_scale = is_ak_or_m4 ? (current_weapon_ == Weapon::AK47 ? 1.85f : 1.78f) : 1.25f;
+    const float smooth_rate = is_ak_or_m4 ? 18.0f : 12.0f;
+    const float upward_kick_deg = ystl::max (0.0f, -pev->punchangle.x) * recoil_scale;
+    const float target = ystl::tanf (ystl::deg2rad (upward_kick_deg)) * distance;
+    recoil_compensation_ += (target - recoil_compensation_) * ystl::min (1.0f, frame_interval_ * smooth_rate);
     spot.z -= recoil_compensation_;
+
+    // Counter horizontal recoil sway (T-pattern control for AK47 / M4A4)
+    if (distance > 10.0f) {
+      const float yaw_scale = is_ak_or_m4 ? 1.65f : 0.90f;
+      const float yaw_target = ystl::tanf (ystl::deg2rad (pev->punchangle.y * yaw_scale)) * distance;
+      ystl::Vector right {};
+      pev->v_angle.angle_vectors (nullptr, &right, nullptr);
+      spot -= right * yaw_target;
+    }
   }
   else {
     recoil_compensation_ = 0.0f;
@@ -916,10 +946,9 @@ ystl::Vector Bot::GetEnemyBodyOffset () {
 
   last_enemy_origin_ = spot;
 
-  // add some error to unskilled bots
-  if (difficulty_ < Difficulty::Normal) {
-    spot += GetBodyOffsetError (enemy_, distance);
-  }
+  // always apply organic human mouse micro-variance (scaled by skill) so bots never Aimlock onto a dead-still bone coordinate
+  const float error_scale = (difficulty_ == Difficulty::Expert) ? 0.28f : ((difficulty_ == Difficulty::Hard) ? 0.50f : 1.0f);
+  spot += GetBodyOffsetError (enemy_, distance) * error_scale;
   return spot;
 }
 
@@ -1274,7 +1303,7 @@ void Bot::AttackMovement () {
       move_speed_ = 0.0f;
     }
 
-    if (difficulty_ >= Difficulty::Normal && distance_sq < ystl::sqrf (kSprayDistance) && (reload_data_.is_reloading || health_value_ < 35.0f) &&
+    if (!HumanCopycat::Enabled () && difficulty_ >= Difficulty::Normal && distance_sq < ystl::sqrf (kSprayDistance) && (reload_data_.is_reloading || health_value_ < 35.0f) &&
         jump_time_ + 5.0f < game.Time () && IsOnFloor () && pev->velocity.length2d () > 150.0f && !UsesSniper () && is_enemy_cone) {
 
       pev->button |= IN_JUMP;
@@ -1298,8 +1327,34 @@ void Bot::AttackMovement () {
         }
       }
     }
-    move_speed_ = 0.0f;
-    strafe_speed_ = 0.0f;
+    // Active pro counter-strafing to stop on a dime
+    if (IsOnFloor () && !IsOnLadder () && !IsInWater ()) {
+      const float fwd_vel = pev->velocity | pev->v_angle.forward ();
+      const float side_vel = pev->velocity | pev->v_angle.right ();
+      if (fwd_vel > 15.0f) {
+        move_speed_ = -pev->maxspeed;
+      } else if (fwd_vel < -15.0f) {
+        move_speed_ = pev->maxspeed;
+      } else {
+        move_speed_ = 0.0f;
+      }
+      if (side_vel > 15.0f) {
+        strafe_speed_ = -pev->maxspeed;
+      } else if (side_vel < -15.0f) {
+        strafe_speed_ = pev->maxspeed;
+      } else {
+        strafe_speed_ = 0.0f;
+      }
+    } else {
+      move_speed_ = 0.0f;
+      strafe_speed_ = 0.0f;
+    }
+
+    // GeT_RiGhT / HeatoN drop-shot: crouch during rifle spray at close-mid range
+    if (difficulty_ >= Difficulty::Normal && UsesRifle () && wants_to_fire_ && distance_sq < ystl::sqrf (480.0f) &&
+        IsOnFloor () && !IsOnLadder () && !IsInWater ()) {
+      duck_timer_.start (frame_interval_ * 3.0f);
+    }
   }
 
   if (reload_data_.is_reloading) {
@@ -1618,6 +1673,8 @@ edict_t *Bot::SetCorrectGrenadeVelocity (ystl::StringRef model) {
         ent->v.velocity = grenade_ + (grenade_ * frame_interval_ * 4.0f);
       }
       grenade_check_timer_.start (3.0f);
+      is_using_grenade_ = false;
+      aim_flags_ &= ~AimFlags::Grenade;
 
       SelectBestWeapon ();
       CompleteTask ();
@@ -1655,35 +1712,65 @@ void Bot::CheckGrenadesThrow () {
   if (HasBombTask () || IsInNarrowPlace () || cv_ignore_enemies || is_using_grenade_ ||
       reload_data_.is_reloading || !grenade_check_timer_.elapsed () || last_enemy_origin_.empty () ||
       (IsKnifeMode () && !game_state.IsBombPlanted ())) return;
+  // Never throw utility when an enemy is already visible; bots must shoot visible enemies immediately
+  // and only throw smoke/flashbang/HE grenade BEFORE the enemy is in sight.
+  if (!IsGrenadeWar () && (has_flag (states_, Sense::SeeingEnemy) || !game.IsNullEntity (enemy_) || see_enemy_timer_.less_than (0.8f))) return;
   grenade_check_timer_.start (cv_human_flash_interval.As<float> ());
-  // Use only this bot's current contact/memory. No hidden enemy positions,
-  // velocity prediction through walls, or instant knowledge of their weapon.
-  if (!IsGrenadeWar () && !has_flag (states_, Sense::SeeingEnemy | Sense::SuspectEnemy | Sense::HearingEnemy) &&
+  // Require pre-contact awareness (hearing footsteps/fire or suspecting enemy around a corner/cover)
+  if (!IsGrenadeWar () && !has_flag (states_, Sense::SuspectEnemy | Sense::HearingEnemy) &&
       see_enemy_timer_.greater_than (6.0f)) return;
   const float distance = pev->origin.distance2d (last_enemy_origin_);
-  if (distance < 280.0f || distance > 1200.0f || last_enemy_origin_.z > pev->origin.z + 450.0f) return;
-  if (!IsGrenadeWar () && has_flag (states_, Sense::SeeingEnemy) && distance < 500.0f) return;
+  if (distance < 260.0f || distance > 1250.0f || last_enemy_origin_.z > pev->origin.z + 450.0f) return;
   const bool cover = health_value_ < 50.0f || fear_level_ > 0.65f ||
     (in_bomb_zone_ && (has_c4_ || game_state.IsBombPlanted ()));
   const Weapon order[] = { Weapon::Flashbang, cover ? Weapon::Smoke : Weapon::Explosive,
     cover ? Weapon::Explosive : Weapon::Smoke };
+
+  // Build candidate pre-utility target points (chokepoint/corner node first when enemy is behind a wall)
+  ystl::Vector choke_point {};
+  if (graph.Exists (last_predict_index_) && vistab.Visible (current_node_index_, last_predict_index_)) {
+    choke_point = graph[last_predict_index_].origin;
+  }
+  else if (path_walk_.HasNext () && graph.Exists (path_walk_.Next ())) {
+    choke_point = graph[path_walk_.Next ()].origin;
+  }
+
   for (const auto id : order) {
     if (!has_flag (pev->weapons, ystl::bit (id)) || IsWeaponRestricted (id)) continue;
     // An unsafe/unreachable flash must not starve a useful smoke or HE.
-    if (id == Weapon::Smoke && !cover && distance < 700.0f) continue;
-    auto target = last_enemy_origin_;
-    if (id == Weapon::Smoke) target = pev->origin + (last_enemy_origin_ - pev->origin) * (cover ? 0.4f : 0.55f);
-    if (id == Weapon::Flashbang) target.z += 48.0f;
-    if (!IsGrenadeTargetSafe (id, target)) continue;
-    auto velocity = CalcThrow (GetEyesPos (), target);
-    if (velocity.length_sq () < 100.0f) velocity = CalcToss (GetEyesPos (), target);
-    if (velocity.length_sq () <= 100.0f) continue;
-    throw_ = target;
-    const auto state = id == Weapon::Flashbang ? Sense::ThrowFlashbang : id == Weapon::Smoke ? Sense::ThrowSmoke : Sense::ThrowExplosive;
-    const auto task = id == Weapon::Flashbang ? TaskId::ThrowFlashbang : id == Weapon::Smoke ? TaskId::ThrowSmoke : TaskId::ThrowExplosive;
-    states_ |= state;
-    StartTask (task, TaskPri::kThrow, kInvalidNodeIndex, game.Time () + 5.0f, false);
-    return;
+    if (id == Weapon::Smoke && !cover && distance < 550.0f) continue;
+
+    ystl::Vector candidates[3] {};
+    int num_candidates = 0;
+
+    if (id == Weapon::Smoke) {
+      if (!choke_point.empty () && pev->origin.distance2d (choke_point) >= 240.0f) {
+        candidates[num_candidates++] = choke_point;
+      }
+      candidates[num_candidates++] = pev->origin + (last_enemy_origin_ - pev->origin) * (cover ? 0.4f : 0.55f);
+    }
+    else {
+      candidates[num_candidates++] = last_enemy_origin_;
+      if (!choke_point.empty () && pev->origin.distance2d (choke_point) >= 260.0f) {
+        candidates[num_candidates++] = choke_point;
+      }
+      candidates[num_candidates++] = pev->origin + (last_enemy_origin_ - pev->origin) * 0.6f;
+    }
+
+    for (int c = 0; c < num_candidates; ++c) {
+      auto target = candidates[c];
+      if (id == Weapon::Flashbang) target.z += 48.0f;
+      if (!IsGrenadeTargetSafe (id, target)) continue;
+      auto velocity = CalcThrow (GetEyesPos (), target);
+      if (velocity.length_sq () < 100.0f) velocity = CalcToss (GetEyesPos (), target);
+      if (velocity.length_sq () <= 100.0f) continue;
+      throw_ = target;
+      const auto state = id == Weapon::Flashbang ? Sense::ThrowFlashbang : id == Weapon::Smoke ? Sense::ThrowSmoke : Sense::ThrowExplosive;
+      const auto task = id == Weapon::Flashbang ? TaskId::ThrowFlashbang : id == Weapon::Smoke ? TaskId::ThrowSmoke : TaskId::ThrowExplosive;
+      states_ |= state;
+      StartTask (task, TaskPri::kThrow, kInvalidNodeIndex, game.Time () + 5.0f, false);
+      return;
+    }
   }
 }
 

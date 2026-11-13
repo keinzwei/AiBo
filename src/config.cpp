@@ -153,7 +153,7 @@ void Config::LoadMainConfig (bool is_first_load) {
     }
     file.close ();
   }
-  else {
+  else if (!cv_single_dll_mode) {
     game.ServerCommand (ystl::strings.format ("%s cvars save", product.cmd_pri));
   }
 
@@ -172,8 +172,10 @@ void Config::LoadMainConfig (bool is_first_load) {
     // engine tables after a scenario's stack-owned FakeEngine has died.
     ystl::http.startup ();
 #else
-    ystl::http.startup (
-      conf.FetchCustom ("CheckConnectivityHost"), "Bot is unable to check network availability. Networking features are disabled.");
+    if (!cv_single_dll_mode) {
+      ystl::http.startup (
+        conf.FetchCustom ("CheckConnectivityHost"), "Bot is unable to check network availability. Networking features are disabled.");
+    }
 #endif
   }
 
@@ -185,7 +187,7 @@ void Config::LoadMainConfig (bool is_first_load) {
       game.ServerCommand ("bind \"%s\" \"%s menu\"", val, product.cmd_pri);
     }
   }
-  static const bool disable_log_write = conf.FetchCustom ("DisableLogFile").starts_with ("yes");
+  const bool disable_log_write = cv_single_dll_mode.As<bool> () || conf.FetchCustom ("DisableLogFile").starts_with ("yes");
 
   // disable logger if requested
   ystl::logger.set_log_write_enabled (!disable_log_write);
@@ -978,26 +980,26 @@ void Config::LoadDifficultyConfig () {
     return; // tweaks intact
   }
 
-  // initialize defaults
+  // initialize defaults (skill-based headshot rates with natural human aim error, no aimlock)
   difficulty_[Difficulty::Noob] = {
     { 1.0f, 1.4f },
-    20, 10, 10, 34, { 12.0f, 12.0f, 20.0f }
+    20, 10, 0, 34, { 12.0f, 12.0f, 20.0f }
   };
   difficulty_[Difficulty::Easy] = {
     { 0.7f, 1.0f },
-    35, 25, 25, 30, { 8.0f, 8.0f, 14.0f }
+    35, 25, 0, 30, { 8.0f, 8.0f, 14.0f }
   };
   difficulty_[Difficulty::Normal] = {
     { 0.5f, 0.7f },
-    50, 40, 40, 27, { 5.0f, 5.0f, 10.0f }
+    50, 40, 0, 27, { 5.0f, 5.0f, 10.0f }
   };
   difficulty_[Difficulty::Hard] = {
     { 0.3f, 0.45f },
-    65, 60, 60, 24, { 2.0f, 2.0f, 4.0f }
+    65, 60, 0, 24, { 2.5f, 2.5f, 4.0f }
   };
   difficulty_[Difficulty::Expert] = {
     { 0.15f, 0.3f },
-    80, 75, 75, 21, { 0.0f, 0.0f, 0.0f }
+    80, 75, 0, 21, { 1.2f, 1.2f, 1.8f }
   };
 
   if (rc == ConfigRead::Missing) {
@@ -1111,7 +1113,7 @@ void Config::LoadCustomConfig () {
       { "ZMInfectedTeam",        "T"                                  },
       { "ModeWallClassname",     "test_effect"                        },
       { "EnableFakeBotFeatures", "no"                                 },
-      { "DisableLogFile",        "no"                                 },
+      { "DisableLogFile",        "yes"                                },
       { "DisableSpawnControl",   "no"                                 },
       { "UnlockThinkFPS",        "no"                                 },
       { "CheckConnectivityHost", GraphUrlResolver::kConnectivityHost  },
@@ -2355,7 +2357,9 @@ bool Config::OpenConfig (
   }
 
   if (!*out_file) {
-    ystl::logger.error (error_if_not_exists.chars ());
+    if (!cv_single_dll_mode) {
+      ystl::logger.error (error_if_not_exists.chars ());
+    }
     return false;
   }
   return true;

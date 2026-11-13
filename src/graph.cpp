@@ -1151,8 +1151,8 @@ void Graph::EmitNotify (NotifySound sound) const {
     { NotifySound::Done,   "common/wpn_hudon.wav"      }
   };
 
-  // notify editor
-  if (game.IsPlayerEntity (editor_) && !silence_messages_) {
+  // notify editor only when manual graph editing is explicitly enabled
+  if (!cv_single_dll_mode && !analyzer.IsAnalyzing () && HasEditFlag (GraphEdit::On) && game.IsPlayerEntity (editor_) && !silence_messages_) {
     game.PlaySound (editor_, notify_sounds[sound].chars ());
   }
 }
@@ -1815,6 +1815,85 @@ bool Graph::ConvertOldFormat () {
   return false;
 }
 
+
+void Graph::FinalizeInMemoryGraph () {
+  if (paths_.empty ()) {
+    return;
+  }
+  InitBuckets ();
+  hash_table_.reserve (paths_.size ());
+  for (int i = 0; i < Length (); ++i) {
+    paths_[i].number = i;
+    AddToBucket (paths_[i].origin, i);
+  }
+  info_.author.assign (product.name);
+  info_.header.options = static_cast<int32_t> (StorageOption::Graph | StorageOption::Analyzed | StorageOption::Official);
+  info_.header.length = Length ();
+  has_changed_ = false;
+  narrow_checked_ = false;
+  light_checked_ = false;
+  InitNarrowPlaces ();
+  vistab.Load ();
+  planner.Init ();
+  practice.Load ();
+  PopulateNodes ();
+  ClearEditFlag (GraphEdit::On | GraphEdit::Auto | GraphEdit::Noclip);
+  cv_debug_goal.Set (kInvalidNodeIndex);
+}
+
+void Graph::BootstrapInMemoryGraph () {
+  const bool prev_silence = silence_messages_;
+  SetMessageSilence (true);
+  SeedBasicNodes ();
+
+  // Ensure at least kMaxNodeLinks (8) nodes exist in RAM even on minimal custom maps
+  if (Length () < kMaxNodeLinks) {
+    const ystl::Vector base = Length () > 0 ? paths_[0].origin : ystl::Vector (0.0f, 0.0f, 36.0f);
+    for (int k = 0; Length () < kMaxNodeLinks && k < 16; ++k) {
+      const float angle = static_cast<float> (k) * 45.0f * 0.01745329252f;
+      const float radius = 96.0f + static_cast<float> (k / 8) * 64.0f;
+      ystl::Vector cand (base.x + std::cos (angle) * radius, base.y + std::sin (angle) * radius, base.z);
+      Trace::Result tr {};
+      trace.Line (cand + ystl::Vector (0.0f, 0.0f, 36.0f), cand - ystl::Vector (0.0f, 0.0f, 256.0f), TraceIgnore::Monsters, nullptr, &tr);
+      if (!tr.all_solid && !tr.start_solid && tr.fraction < 0.99f) {
+        cand = tr.end_pos + ystl::Vector (0.0f, 0.0f, 36.0f);
+      }
+      if (GetNearestNoBuckets (cand, 42.0f) == kInvalidNodeIndex) {
+        Add (NodeAddFlag::Normal, cand);
+      }
+    }
+  }
+
+  // Ensure a connected initial backbone across seeded nodes so bots can spawn and pathfind immediately at t=0
+  const int n = Length ();
+  for (int i = 0; i < n; ++i) {
+    int best_j = -1;
+    float best_d = kInfiniteDistance;
+    for (int j = 0; j < n; ++j) {
+      if (i == j) continue;
+      const float d = paths_[i].origin.distance (paths_[j].origin);
+      if (d < best_d) {
+        best_d = d;
+        best_j = j;
+      }
+      if (d <= 650.0f && !IsConnected (i, j) && HasFreeLinkSlot (i)) {
+        AddPath (i, j, d);
+      }
+    }
+    if (best_j >= 0 && !IsConnected (i, best_j) && HasFreeLinkSlot (i)) {
+      AddPath (i, best_j, best_d);
+    }
+    if (i + 1 < n && !IsConnected (i, i + 1) && HasFreeLinkSlot (i)) {
+      AddPath (i, i + 1, paths_[i].origin.distance (paths_[i + 1].origin));
+    }
+    if (i > 0 && !IsConnected (i, i - 1) && HasFreeLinkSlot (i)) {
+      AddPath (i, i - 1, paths_[i].origin.distance (paths_[i - 1].origin));
+    }
+  }
+  SetMessageSilence (prev_silence);
+  FinalizeInMemoryGraph ();
+}
+
 bool Graph::LoadGraphData () {
   ExtenHeader exten {};
   StorageOption out_options = StorageOption::Invalid;
@@ -1892,9 +1971,10 @@ bool Graph::LoadGraphData () {
         "Binary graph not found, but a text graph exists. Run '%s g import' + '%s g apply' to use it.", product.cmd_pri, product.cmd_pri);
     }
     probe.close ();
+    BootstrapInMemoryGraph ();
     analyzer.Start ();
+    return Length () > 0;
   }
-  return false;
 }
 
 bool Graph::CanDownload () {
@@ -2578,8 +2658,8 @@ bool Graph::IsNodeReacheableWithJump (const ystl::Vector &src, const ystl::Vecto
 void Graph::Frame () {
   // this function executes frame of graph operation code
 
-  if (game.IsNullEntity (editor_)) {
-    return; // this function is only valid with editor, and in graph enabled mode
+  if (cv_single_dll_mode || analyzer.IsAnalyzing () || !HasEditFlag (GraphEdit::On) || game.IsNullEntity (editor_)) {
+    return; // never draw waypoint lines or HUD node info during autonomous gameplay
   }
 
   // keep the clipping mode enabled, or it can be turned off after new round has started
@@ -3062,7 +3142,7 @@ void Graph::ComputeReachability (ystl::Array<bool> &forward, ystl::Array<bool> &
 
 bool Graph::CheckNodes (bool teleport_player, bool only_paths) {
   auto teleport = [&] (const Path &path) -> void {
-    if (teleport_player) {
+    if (teleport_player && !cv_single_dll_mode && !analyzer.IsAnalyzing ()) {
       engfuncs.pfnSetOrigin (editor_, path.origin);
       SetEditFlag (GraphEdit::On | GraphEdit::Noclip);
     }
@@ -3391,7 +3471,9 @@ void Graph::UnassignPath (int from, int to) {
     .index = kInvalidNodeIndex,
   };
 
-  SetEditFlag (GraphEdit::On);
+  if (!cv_single_dll_mode && !analyzer.IsAnalyzing () && !silence_messages_ && HasEditFlag (GraphEdit::On)) {
+    SetEditFlag (GraphEdit::On);
+  }
   has_changed_ = true;
 }
 

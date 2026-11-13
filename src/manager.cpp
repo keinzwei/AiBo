@@ -118,7 +118,8 @@ CreateResult Manager::Create (ystl::StringRef name, Difficulty difficulty, Perso
 
   edict_t *bot = nullptr;
   ystl::String result_name {};
-  if (HumanArena::LobbyEnabled () && GetBotCount () >= HumanArena::Capacity ()) return CreateResult::MaxPlayersReached;
+  const int max_bot_cap = ystl::min (21, ystl::max (0, game.MaxClients () - GetHumansCount ()));
+  if ((HumanArena::LobbyEnabled () && GetBotCount () >= HumanArena::Capacity ()) || GetBotCount () >= max_bot_cap) return CreateResult::MaxPlayersReached;
 
   // do not allow create bots when there is no graph
   if (!graph.Length ()) {
@@ -177,27 +178,33 @@ CreateResult Manager::Create (ystl::StringRef name, Difficulty difficulty, Perso
   }
   Name *bot_name = nullptr;
 
-  // setup name
-  if (name.empty () || cv_human_roster_lock) {
-    bot_name = conf.PickBotName ();
-
-    if (bot_name) {
-      result_name = bot_name->name;
+  // setup name via Generative CS 1.6 Nickname Bot Generator (Historical + Steam + Non-Steam + Continuous Player Monitoring)
+  const bool is_unnamed_request = name.empty () || name[0] == '\0' || name.starts_with ("unnamed") || name.starts_with ("Unnamed");
+  if (is_unnamed_request || cv_human_roster_lock) {
+    if (!cv_human_roster_lock) {
+      result_name = HumanArena::GenerateUniqueNickname ();
     }
-    else {
-      if (cv_human_roster_lock) {
-        // GoldSrc permits more than 28 bots. Overflow keeps a legend base name
-        // with a unique suffix instead of falling back to a AiBo default.
-        for (int suffix = 2; result_name.empty (); ++suffix) {
-          for (const auto &legend : human_policy::LegendNames) {
-            ystl::String candidate; candidate.assignf ("%s (%d)", legend, suffix);
-            bool used = false;
-            for (auto &existing : bots_) if (existing.pev->netname.str () == candidate) used = true;
-            if (!used) { result_name = candidate; break; }
+    if (result_name.empty ()) {
+      bot_name = conf.PickBotName ();
+
+      if (bot_name) {
+        result_name = bot_name->name;
+      }
+      else {
+        if (cv_human_roster_lock) {
+          // GoldSrc permits more than 28 bots. Overflow keeps a legend base name
+          // with a unique suffix instead of falling back to a AiBo default.
+          for (int suffix = 2; result_name.empty (); ++suffix) {
+            for (const auto &legend : human_policy::LegendNames) {
+              ystl::String candidate; candidate.assignf ("%s (%d)", legend, suffix);
+              bool used = false;
+              for (auto &existing : bots_) if (existing.pev->netname.str () == candidate) used = true;
+              if (!used) { result_name = candidate; break; }
+            }
           }
         }
+        else result_name.assignf ("%s_%d.%d", product.name_lower, ystl::rg (100, 10000), ystl::rg (100, 10000));
       }
-      else result_name.assignf ("%s_%d.%d", product.name_lower, ystl::rg (100, 10000), ystl::rg (100, 10000));
     }
   }
   else {
@@ -486,7 +493,7 @@ void Manager::MaintainQuota () {
 
     // only increment quota for manual add on successful creation
     if (request.manual && create_result == CreateResult::Success) {
-      cv_quota.Set (ystl::min (cv_quota.As<int> () + 1, HumanArena::LobbyEnabled () ? ystl::min (31,max_clients) : max_clients));
+      cv_quota.Set (ystl::min (cv_quota.As<int> () + 1, ystl::min (21, max_clients)));
     }
 
     // on failure just clear pending requests, never modify cv_quota
@@ -525,7 +532,11 @@ void Manager::MaintainQuota () {
     return;
   }
   int desired_bot_count = cv_quota.As<int> ();
-  if (HumanArena::LobbyEnabled () && desired_bot_count > 31) { desired_bot_count = 31; cv_quota.Set (31); }
+  if (cv_internet_mode && desired_bot_count > 0 && desired_bot_count < 16) {
+    desired_bot_count = 16;
+    cv_quota.Set (16);
+  }
+  if (desired_bot_count > 21) { desired_bot_count = 21; cv_quota.Set (21); }
 
   // only assign if out of range
   if (desired_bot_count < 0 || desired_bot_count > max_clients) {
@@ -567,17 +578,12 @@ void Manager::MaintainQuota () {
   else {
     desired_bot_count = ystl::min (desired_bot_count, max_clients - human_players_in_game);
   }
-  auto max_spawn_count = game.GetSpawnCount (Team::Terrorist) + game.GetSpawnCount (Team::CT) - human_players_in_game;
-
-  // if has some custom spawn points, max out spawn point counter
-  if (desired_bot_count >= bots_in_game && HasCustomCsdmSpawnEntities ()) {
-    max_spawn_count = max_clients + 1;
+  // Internet Mode Capacity: Max 21 bots
+  desired_bot_count = ystl::min (desired_bot_count, ystl::min (21, ystl::max (0, max_clients - total_humans_in_game)));
+  if (desired_bot_count > 10 && mp_limitteams.ptr && mp_limitteams.As<int> () != 0) {
+    mp_limitteams.Set (0);
   }
-
-  // disable spawn control
-  if (conf.FetchCustom ("DisableSpawnControl").starts_with ("yes")) {
-    max_spawn_count = max_clients + 1;
-  }
+  auto max_spawn_count = max_clients + 1;
 
   // sent message only to console from here
   ctrl.SetFromConsole (true);
@@ -590,12 +596,16 @@ void Manager::MaintainQuota () {
     BalancedKickRandom (false);
   }
   else {
-    // clear the saved bots when quota balancing ended
-    if (cv_save_bots && !saved_bots_.empty ()) {
+    // Level 4 5v5 Team Equilibrium: if a human joined a team and made teams 6v4, kick 1 bot from the stacked team so a new bot joins the 4-player side
+    const auto &[ts, cts] = CountTeamPlayers ();
+    if (!game.Is (GameFlags::FreeForAll) && human_players_in_game > 0 && bots_in_game > 0 && ystl::abs (ts - cts) >= 2) {
+      BalancedKickRandom (false);
+    }
+    else if (cv_save_bots && !saved_bots_.empty ()) {
       saved_bots_.clear ();
     }
   }
-  quota_maintain_timer_.start (0.4f);
+  quota_maintain_timer_.start (bots_in_game < ystl::min (16, max_clients - total_humans_in_game) ? 0.08f : 0.4f);
 }
 
 void Manager::MaintainLeaders () {
@@ -1516,7 +1526,12 @@ Bot::Bot (edict_t *bot, Difficulty difficulty, Personality personality, Team tea
   money_amount_ = 0;
   logo_decal_index_ = conf.GetRandomLogoDecalIndex ();
 
-  if (cv_rotate_bots) {
+  if (cv_internet_mode) {
+    const float min_stay = cv_internet_min_interval.As<float> ();
+    const float max_stay = ystl::max (min_stay, cv_internet_max_interval.As<float> ());
+    stay_timer_.start (rg (min_stay, max_stay));
+  }
+  else if (cv_rotate_bots) {
     stay_timer_.start (rg (cv_rotate_stay_min.As<float> (), cv_rotate_stay_max.As<float> ()));
   }
   else {
@@ -2271,16 +2286,15 @@ void Bot::UpdateTeamJoin () {
     start_action_ = Msg::TeamSelect;
   }
 
-  // if bot was unable to join team, and no menus pop-ups, check for stacked team
+  // if bot was unable to join team, automatically uncap mp_limitteams and switch wanted team so all 31 bots can join
   if (start_action_ == Msg::None) {
     if (++retry_join_ > 3 && bots.IsTeamStacked (util.ConvertFromCsTeam (wanted_team_))) {
       retry_join_ = 0;
-
-      ctrl.Msg ("Could not add bot to the game: Team is stacked (to disable this check, set mp_limitteams and mp_autoteambalance to zero and "
-                "restart the round).");
-      Kick ();
-
-      return;
+      if (mp_limitteams.ptr) {
+        mp_limitteams.Set (0);
+      }
+      wanted_team_ = (wanted_team_ == CSTeam::CT) ? CSTeam::Terrorist : CSTeam::CT;
+      start_action_ = Msg::TeamSelect;
     }
   }
 

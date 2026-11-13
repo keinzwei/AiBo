@@ -237,9 +237,10 @@ ShotPlan shootingPlan (unsigned w, float distance, float level, AimStyle style, 
       return { ShotMode::Burst, 4 + (variation / 3) % 3, 0.32f, 22, 2.1f };
     return { ShotMode::Tap, 1, 0.23f, 26, 1.6f };
   }
-  if (distance < 300 || (style == AimStyle::Spray && distance < 600 && level > 0.5f))
-    return { ShotMode::Spray, 12 + variation % 9, 0.20f, distance < 220 ? 90.0f : 38.0f, distance < 220 ? 10.0f : 6.0f };
-  p = { ShotMode::Burst, 2 + variation % 4, 0.16f, 35, 3.7f };
+  const bool ak_or_m4 = (w == 28 || w == 22);
+  if (distance < 300 || (ak_or_m4 && distance < 550 && level > 0.25f) || (style == AimStyle::Spray && distance < 650 && level > 0.4f))
+    return { ShotMode::Spray, 12 + variation % 10, 0.18f, distance < 240 ? 92.0f : 44.0f, distance < 280 ? 12.0f : (ak_or_m4 ? 8.5f : 6.0f) };
+  p = { ShotMode::Burst, (ak_or_m4 ? 4u : 2u) + variation % 4, 0.16f, 35, ak_or_m4 ? 5.2f : 3.7f };
   return p;
 }
 SkillModel expertModel (const SkillModel &base, float level) {
@@ -247,11 +248,11 @@ SkillModel expertModel (const SkillModel &base, float level) {
   level = unit (level);
   if (level <= 0)
     return m;
-  m.turnRate = base.turnRate + (std::max (base.turnRate, 520.0f) - base.turnRate) * level;
-  m.reactionMs = base.reactionMs + (std::min (base.reactionMs, 155.0f) - base.reactionMs) * level;
-  m.aimError = std::max (0.10f, base.aimError * (1 - 0.82f * level));
+  m.turnRate = base.turnRate + (std::max (base.turnRate, 640.0f) - base.turnRate) * level;
+  m.reactionMs = base.reactionMs + (std::min (base.reactionMs, 140.0f) - base.reactionMs) * level;
+  m.aimError = std::max (0.30f, base.aimError * (1 - 0.72f * level));
   for (unsigned i = 0; i < 31; ++i) {
-    m.recoil[i] = base.recoil[i] + (0.98f - base.recoil[i]) * level;
+    m.recoil[i] = base.recoil[i] + (1.0f - base.recoil[i]) * level;
     m.recoilSamples[i] = std::max (m.recoilSamples[i], 1u);
   }
   return m;
@@ -307,6 +308,247 @@ bool ShotDiscipline::allow (
   }
   return true;
 }
+
+void ProWeaponSwitchController::reset () {
+  *this = ProWeaponSwitchController {};
+}
+
+unsigned ProWeaponSwitchController::selectBestSecondary (uint32_t weaponsMask) {
+  if (weaponsMask & (1u << kWeaponDeagle))  return kWeaponDeagle;
+  if (weaponsMask & (1u << kWeaponUSP))     return kWeaponUSP;
+  if (weaponsMask & (1u << kWeaponGlock18)) return kWeaponGlock18;
+  return 0u;
+}
+
+unsigned ProWeaponSwitchController::selectBestPrimary (uint32_t weaponsMask) {
+  if (weaponsMask & (1u << kWeaponAWP))  return kWeaponAWP;
+  if (weaponsMask & (1u << kWeaponAK47)) return kWeaponAK47;
+  if (weaponsMask & (1u << kWeaponM4A1)) return kWeaponM4A1;
+  return 0u;
+}
+
+void ProWeaponSwitchController::onShotFired (
+    float now, unsigned w, int remainingPrimaryClip, unsigned firedInBurst,
+    bool enemyVisible, float enemyDistance, AimStyle style) {
+  if (!std::isfinite (now)) return;
+  if (w == kWeaponAWP) {
+    lastPrimaryWeapon_ = kWeaponAWP;
+    lastPrimaryShot_ = now;
+    // Pro AWPer reflex: immediately queue switch to Deagle/Secondary after firing AWP
+    switchAt_ = now + (style == AimStyle::Awper ? 0.06f : 0.10f);
+    activeReason_ = SwitchReason::AwpPostShotQuickSwitch;
+  }
+  else if (w == kWeaponAK47 || w == kWeaponM4A1) {
+    lastPrimaryWeapon_ = w;
+    lastPrimaryShot_ = now;
+    if (enemyVisible && enemyDistance < 850.0f) {
+      if (remainingPrimaryClip <= 3) {
+        switchAt_ = now + 0.05f;
+        activeReason_ = SwitchReason::RifleEmptyOrLowClipCombat;
+      }
+      else if (firedInBurst >= 7u && remainingPrimaryClip <= 8 && enemyDistance < 600.0f) {
+        switchAt_ = now + 0.07f;
+        activeReason_ = SwitchReason::RifleSprayRecoilFinisher;
+      }
+    }
+  }
+}
+
+WeaponSwitchDecision ProWeaponSwitchController::evaluate (
+    float now, unsigned currentWeapon, uint32_t weaponsMask,
+    int primaryClip, int secondaryClip, bool isReloading,
+    bool enemyVisible, float enemyDistance, bool isScoped,
+    unsigned firedInBurst, AimStyle style, bool isTravelingToSpot) {
+  WeaponSwitchDecision out {};
+  if (!std::isfinite (now)) return out;
+
+  const unsigned sec = selectBestSecondary (weaponsMask);
+  unsigned pri = selectBestPrimary (weaponsMask);
+  if (lastPrimaryWeapon_ != 0u && (weaponsMask & (1u << lastPrimaryWeapon_))) {
+    pri = lastPrimaryWeapon_;
+  }
+
+  // 1. Currently holding a Primary weapon (AWP, AK-47, or M4A1)
+  if (isPrimaryWeapon (currentWeapon)) {
+    lastPrimaryWeapon_ = currentWeapon;
+    if (sec != 0u && secondaryClip > 0) {
+      // 1A. Reloading primary when an enemy appears -> cancel reload and switch to Secondary immediately
+      if (isReloading && enemyVisible) {
+        switchAt_ = -1.0f;
+        holdingSecondary_ = true;
+        activeSecondary_ = sec;
+        activeReason_ = SwitchReason::ReloadInterruptedByEnemy;
+        returnAt_ = now + 1.15f;
+        drawReadyAt_ = now + 0.10f;
+        if (currentWeapon == kWeaponAWP) ++awpToSecondarySwitches_;
+        else ++rifleToSecondarySwitches_;
+        out = { true, sec, SwitchReason::ReloadInterruptedByEnemy, true, true };
+        return out;
+      }
+
+      // 1B. Scheduled post-shot quick-switch ready
+      if (switchAt_ >= 0.0f && now >= switchAt_) {
+        switchAt_ = -1.0f;
+        holdingSecondary_ = true;
+        activeSecondary_ = sec;
+        if (currentWeapon == kWeaponAWP) {
+          const bool fightWithDeagle = (enemyVisible && enemyDistance < 900.0f) || primaryClip <= 0;
+          returnAt_ = now + (fightWithDeagle ? 1.25f : (style == AimStyle::Awper ? 0.12f : 0.16f));
+          drawReadyAt_ = now + (style == AimStyle::Awper ? 0.08f : 0.11f);
+          activeReason_ = SwitchReason::AwpPostShotQuickSwitch;
+          ++awpToSecondarySwitches_;
+          out = { true, sec, SwitchReason::AwpPostShotQuickSwitch, false, true };
+          return out;
+        }
+        else {
+          returnAt_ = now + 1.10f;
+          drawReadyAt_ = now + 0.09f;
+          if (activeReason_ == SwitchReason::None) activeReason_ = SwitchReason::RifleEmptyOrLowClipCombat;
+          ++rifleToSecondarySwitches_;
+          out = { true, sec, activeReason_, true, true };
+          return out;
+        }
+      }
+
+      // 1C. Direct AWP close-quarters ambush or dry clip in combat -> switch to Deagle/Secondary
+      if (currentWeapon == kWeaponAWP && enemyVisible) {
+        if (primaryClip <= 0 || (enemyDistance < 420.0f && (!isScoped || (now - lastPrimaryShot_ < 1.25f)))) {
+          switchAt_ = -1.0f;
+          holdingSecondary_ = true;
+          activeSecondary_ = sec;
+          activeReason_ = SwitchReason::AwpCloseQuartersDefense;
+          returnAt_ = now + 1.25f;
+          drawReadyAt_ = now + 0.09f;
+          ++awpToSecondarySwitches_;
+          out = { true, sec, SwitchReason::AwpCloseQuartersDefense, true, true };
+          return out;
+        }
+      }
+
+      // 1D. Pro AWP Mobility: while walking/running toward spot without visible enemies, switch AWP -> Deagle for 250 u/s speed!
+      if (currentWeapon == kWeaponAWP && !enemyVisible && !isReloading && isTravelingToSpot) {
+        switchAt_ = -1.0f;
+        returnAt_ = -1.0f;
+        holdingSecondary_ = true;
+        activeSecondary_ = sec;
+        activeReason_ = SwitchReason::AwpTravelWithDeagle;
+        drawReadyAt_ = now + 0.08f;
+        ++awpToSecondarySwitches_;
+        out = { true, sec, SwitchReason::AwpTravelWithDeagle, false, true };
+        return out;
+      }
+
+      // 1E. Direct AK-47 / M4A1 combat triggers -> switch from Primary rifle to Secondary pistol
+      if ((currentWeapon == kWeaponAK47 || currentWeapon == kWeaponM4A1) && enemyVisible) {
+        if (primaryClip <= 3 && enemyDistance < 850.0f) {
+          switchAt_ = -1.0f;
+          holdingSecondary_ = true;
+          activeSecondary_ = sec;
+          activeReason_ = SwitchReason::RifleEmptyOrLowClipCombat;
+          returnAt_ = now + 1.15f;
+          drawReadyAt_ = now + 0.09f;
+          ++rifleToSecondarySwitches_;
+          out = { true, sec, SwitchReason::RifleEmptyOrLowClipCombat, true, true };
+          return out;
+        }
+        if (firedInBurst >= 7u && primaryClip <= 8 && enemyDistance < 600.0f) {
+          switchAt_ = -1.0f;
+          holdingSecondary_ = true;
+          activeSecondary_ = sec;
+          activeReason_ = SwitchReason::RifleSprayRecoilFinisher;
+          returnAt_ = now + 1.05f;
+          drawReadyAt_ = now + 0.09f;
+          ++rifleToSecondarySwitches_;
+          out = { true, sec, SwitchReason::RifleSprayRecoilFinisher, true, true };
+          return out;
+        }
+      }
+    }
+  }
+
+  // 2. Currently holding a Secondary weapon (Deagle, USP, or Glock18) or in active secondary switch window
+  if (isSecondaryWeapon (currentWeapon) || holdingSecondary_) {
+    if (pri != 0u && primaryClip > 0) {
+      // Secondary magazine empty while primary has ammo -> immediately switch back to Primary
+      if (secondaryClip <= 0) {
+        holdingSecondary_ = false;
+        returnAt_ = -1.0f;
+        switchAt_ = -1.0f;
+        activeReason_ = SwitchReason::ReturnToPrimary;
+        ++returnToPrimarySwitches_;
+        out = { true, pri, SwitchReason::ReturnToPrimary, false, false };
+        return out;
+      }
+
+      // Handle AWP Travel-With-Deagle state: keep Deagle while moving to spot, switch to AWP upon arrival at spot!
+      if (pri == kWeaponAWP && activeReason_ == SwitchReason::AwpTravelWithDeagle) {
+        if (enemyVisible) {
+          if (enemyDistance < 420.0f) {
+            // Close-quarters surprise while running with Deagle -> fight with Deagle!
+            activeReason_ = SwitchReason::AwpCloseQuartersDefense;
+            returnAt_ = now + 1.25f;
+            out.holdingSecondary = true;
+            return out;
+          }
+          // Medium/long-range enemy spotted -> immediately draw AWP!
+          holdingSecondary_ = false;
+          returnAt_ = -1.0f;
+          switchAt_ = -1.0f;
+          activeReason_ = SwitchReason::ReturnToPrimary;
+          ++returnToPrimarySwitches_;
+          out = { true, kWeaponAWP, SwitchReason::ReturnToPrimary, false, false };
+          return out;
+        }
+        if (isTravelingToSpot) {
+          // Still running toward spot -> keep holding Deagle for light & fast footsteps (250 u/s)
+          holdingSecondary_ = true;
+          out.holdingSecondary = true;
+          return out;
+        }
+        // Arrived at spot! Switch from Deagle to AWP immediately!
+        holdingSecondary_ = false;
+        returnAt_ = -1.0f;
+        switchAt_ = -1.0f;
+        activeReason_ = SwitchReason::ReturnToPrimary;
+        ++returnToPrimarySwitches_;
+        out = { true, kWeaponAWP, SwitchReason::ReturnToPrimary, false, false };
+        return out;
+      }
+
+      // Keep secondary active while fighting a close/mid-range visible enemy if AWP is on cooldown/unsuited or rifle clip is critically low
+      if (enemyVisible && secondaryClip > 0) {
+        if (pri == kWeaponAWP && (enemyDistance < 600.0f || (now - lastPrimaryShot_ < 1.25f && enemyDistance < 900.0f))) {
+          returnAt_ = std::max (returnAt_, now + 0.35f);
+        }
+        else if ((pri == kWeaponAK47 || pri == kWeaponM4A1) && primaryClip <= 3 && enemyDistance < 800.0f) {
+          returnAt_ = std::max (returnAt_, now + 0.45f);
+        }
+      }
+
+      // If AWP bot finished post-shot quick-switch and is now traveling to reposition with no enemy visible, transition to AwpTravelWithDeagle
+      if (pri == kWeaponAWP && !enemyVisible && isTravelingToSpot && returnAt_ >= 0.0f && now >= returnAt_) {
+        returnAt_ = -1.0f;
+        holdingSecondary_ = true;
+        activeReason_ = SwitchReason::AwpTravelWithDeagle;
+        out.holdingSecondary = true;
+        return out;
+      }
+
+      if (returnAt_ >= 0.0f && now >= returnAt_) {
+        holdingSecondary_ = false;
+        returnAt_ = -1.0f;
+        switchAt_ = -1.0f;
+        activeReason_ = SwitchReason::ReturnToPrimary;
+        ++returnToPrimarySwitches_;
+        out = { true, pri, SwitchReason::ReturnToPrimary, false, false };
+        return out;
+      }
+    }
+    out.holdingSecondary = holdingSecondary_;
+  }
+  return out;
+}
+
 PenetrationBudget penetrationBudget (unsigned w) {
   switch (w) {
   case 28:

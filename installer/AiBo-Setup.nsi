@@ -30,7 +30,7 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" "GPL-2.0-or-later; original componen
 !define MUI_PAGE_CUSTOMFUNCTION_LEAVE ValidateSelectedGame
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
-!define MUI_FINISHPAGE_TEXT "AiBo sudah terpasang. Buka console game: meta list, lalu aibo version dan aibo_human_aim_status.$\r$\n$\r$\nAtur server 32 slot untuk 31 bot dan satu manusia. Semiclip/no-block perlu mengizinkan collision untuk boost fisik."
+!define MUI_FINISHPAGE_TEXT "AiBo sudah terpasang. Buka console game: meta list, lalu aibo version dan aibo_human_aim_status.$\r$\n$\r$\nKuota diatur 10 bot (Level 4 Open-Ended Self-Evolving ~99% Otonom): otomatis meng-kick 1 bot saat 1 pemain manusia masuk agar jumlah pemain tetap 10 (5 CT vs 5 T seimbang). Semiclip/no-block perlu mengizinkan collision untuk boost fisik."
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_LANGUAGE "English"
 Section "AiBo" SEC_MAIN

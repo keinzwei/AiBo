@@ -122,18 +122,17 @@ void Bot::AvoidGrenades () {
         }
       }
     }
-    else if (cv_smoke_grenade_checks.As<int> () == 1 && (pent->v.flags & FL_ONGROUND) && grenade.kind == GrenadeKind::Smoke) {
+    else if (cv_smoke_grenade_checks.As<int> () == 1 && (pent->v.flags & FL_ONGROUND) && grenade.kind == GrenadeKind::Smoke && !grenade.origin.empty ()) {
       if (SeesEntity (pent->v.origin) && IsInFov (pent->v.origin - GetEyesPos ()) < pev->fov / 3.0f) {
-        const ystl::Vector ent_origin = game.GetEntityOrigin (pent);
+        const ystl::Vector ent_origin = grenade.origin;
         const ystl::Vector between_us = pev->v_angle.forward ();
         const ystl::Vector between_nade = (ent_origin - pev->origin).normalize ();
-        const ystl::Vector between_result = ((between_nade.get2d () * 150.0f + ent_origin) - pev->origin).normalize ();
+        const ystl::Vector between_result = ((between_nade.get2d () * 75.0f + ent_origin) - pev->origin).normalize ();
 
-        // visibility already proven by the gate above, no second trace
+        // only dense center smoke limits far sight; thin smoke never blinds the bot
         if ((between_nade | between_us) > (between_nade | between_result)) {
-          const float distance = ent_origin.distance (pev->origin);
+          const float distance = ystl::max (ent_origin.distance (pev->origin), kSprayDistanceX2);
 
-          // shrink bot's viewing distance to smoke grenade's distance
           if (view_distance_ > distance) {
             view_distance_ = distance;
 
@@ -642,7 +641,12 @@ void Bot::UpdateTeamAwareness () {
   last_enemy_ = contact_entity;
   last_enemy_origin_ = contact_origin;
   states_ |= (Sense::SuspectEnemy | Sense::HearingEnemy);
-  aim_flags_ |= AimFlags::LastEnemy;
+  if (SeesEntity (contact_origin, true)) {
+    aim_flags_ |= AimFlags::LastEnemy;
+  }
+  else {
+    aim_flags_ |= AimFlags::PredictPath;
+  }
 
   if (tid == TaskId::Pause || tid == TaskId::Camp) {
     Task ()->time = game.Time ();
@@ -664,8 +668,7 @@ void Bot::UpdateTeamAwareness () {
 }
 
 void Bot::UpdateTeamCohesion () {
-  if (HumanCopycat::SpreadActive ()) return;
-  // team players regroup with the nearest living teammate instead of wandering off alone
+  // team players regroup with the C4/VIP objective carrier (even during initial spread) or nearest living teammate
 
   if (!is_alive_ || is_creature_ || game.Is (GameFlags::FreeForAll) || game_state.IsRoundOver () || !team_cohesion_timer_.elapsed () ||
       has_c4_ || has_hostage_ || !game.IsNullEntity (enemy_) || !game.IsNullEntity (last_enemy_) || GetTaskId () != TaskId::Normal) {
@@ -699,10 +702,15 @@ void Bot::UpdateTeamCohesion () {
     }
   }
 
+  if (HumanCopycat::SpreadActive () && escort == nullptr) {
+    return;
+  }
+
   Bot *anchor = escort != nullptr ? escort : (leader != nullptr ? leader : nearest);
+  const float escort_keep_radius = (escort != nullptr && escort->has_c4_) ? 550.0f : 1200.0f;
 
   // already together with the team, nothing to do
-  if (anchor == nullptr || pev->origin.distance_sq (anchor->pev->origin) < ystl::sqrf (1200.0f)) {
+  if (anchor == nullptr || pev->origin.distance_sq (anchor->pev->origin) < ystl::sqrf (escort_keep_radius)) {
     return;
   }
 
@@ -721,26 +729,65 @@ void Bot::UpdateTeamCohesion () {
 }
 
 void Bot::UpdateBombGuard () {
-  // idle bots respond to the planted bomb: CTs cover the defuser, Ts hold it or rush a defuser
+  // Teamwork system:
+  // 1) Pre-plant: Terrorist teammates escort the C4 carrier and hold perimeter angles while the carrier plants.
+  // 2) Post-plant (T): Terrorists hold crossfire defend positions around the planted C4 and immediately rush any defusing CT.
+  // 3) Post-plant (CT): While one CT defuses the C4, nearby CT teammates form a protective bodyguard perimeter around the defuser.
 
-  if ((team_ != Team::CT && team_ != Team::Terrorist) || !is_alive_ || is_creature_ || !game_state.IsBombPlanted () ||
-      (team_ == Team::CT && !bomb_known_) || !bomb_guard_timer_.elapsed () || !game.IsNullEntity (enemy_) ||
-      has_flag (states_, Sense::SeeingEnemy)) {
+  if ((team_ != Team::CT && team_ != Team::Terrorist) || !is_alive_ || is_creature_ ||
+      !bomb_guard_timer_.elapsed () || !game.IsNullEntity (enemy_) || has_flag (states_, Sense::SeeingEnemy)) {
+    return;
+  }
 
+  // Phase 1: Terrorist Plant Protection (while teammate with C4 is in bomb zone or actively planting)
+  if (!game_state.IsBombPlanted ()) {
+    if (team_ == Team::Terrorist && !has_c4_ && game.MapIs (MapFlags::Demolition)) {
+      Bot *planter = nullptr;
+      for (auto &mate : bots) {
+        if (&mate != this && mate.is_alive_ && mate.team_ == Team::Terrorist && mate.has_c4_ &&
+            (mate.in_bomb_zone_ || mate.GetTaskId () == TaskId::PlantBomb || mate.has_progress_bar_)) {
+          planter = &mate;
+          break;
+        }
+      }
+      if (planter != nullptr && pev->origin.distance_sq (planter->pev->origin) <= ystl::sqrf (1800.0f)) {
+        const auto tid = GetTaskId ();
+        if (tid == TaskId::Normal || tid == TaskId::Pause) {
+          const int guard_node = FindDefendNode (planter->pev->origin);
+          if (guard_node != kInvalidNodeIndex && !IsTeammateTargetingNode (guard_node)) {
+            StartTask (TaskId::Camp, TaskPri::kCamp, guard_node, game.Time () + rg (5.0f, 9.0f), true);
+            StartTask (TaskId::MoveTo, TaskPri::kMoveTo, guard_node, 0.0f, true);
+            SelectCampButtons (guard_node);
+            bomb_guard_timer_.start (rg (3.0f, 5.0f));
+          }
+        }
+      }
+    }
+    return;
+  }
+
+  if (team_ == Team::CT && !bomb_known_) {
     return;
   }
 
   const auto bomb_origin = game_state.GetBombOrigin ();
+  if (bomb_origin.empty ()) {
+    return;
+  }
 
-  // stopping a defuse is critical: converge on the bomb even from a roam goal
+  // Stopping a CT defuse is critical for Terrorists: break camp and rush the defuser immediately!
   if (team_ == Team::Terrorist && IsEnemyDefusingBomb (bomb_origin)) {
+    const auto tid = GetTaskId ();
+    if (tid == TaskId::Camp || tid == TaskId::Hide || tid == TaskId::Pause) {
+      ClearTask (tid);
+    }
     if (GetTaskId () != TaskId::MoveTo) {
       position_ = bomb_origin;
       ClearSearchNodes ();
-      StartTask (TaskId::MoveTo, TaskPri::kMoveTo, kInvalidNodeIndex, 0.0f, true);
+      const int bomb_node = graph.GetNearest (bomb_origin, 320.0f);
+      StartTask (TaskId::MoveTo, TaskPri::kMoveTo, bomb_node, 0.0f, true);
     }
-    bomb_guard_timer_.start (rg (2.0f, 4.0f));
-
+    bomb_guard_timer_.start (rg (1.5f, 3.0f));
     return;
   }
 
@@ -750,12 +797,13 @@ void Bot::UpdateBombGuard () {
     return;
   }
 
-  // stay within reach of the bomb, otherwise keep doing what we were doing
-  if (bomb_origin.distance_sq (pev->origin) > ystl::sqrf (1024.0f)) {
+  // Allow teammates within 2200 units (T) or 1400 units (CT bodyguarding a defuser) to lock onto perimeter guard spots
+  const float max_guard_dist = (team_ == Team::Terrorist) ? 2200.0f : 1400.0f;
+  if (bomb_origin.distance_sq (pev->origin) > ystl::sqrf (max_guard_dist)) {
     return;
   }
 
-  // for CTs it only matters once a teammate is actually working on the bomb
+  // For CTs: if nobody is defusing yet, do NOT camp—go defuse the bomb! Only guard once a teammate is actively defusing.
   if (team_ == Team::CT && !IsBombDefusing (bomb_origin)) {
     return;
   }
@@ -767,13 +815,12 @@ void Bot::UpdateBombGuard () {
     return;
   }
 
-  // hold a nearby spot and watch the approach instead of stacking on the bomb
-  // (carry the node in the camp task too, so the claim survives after the move completes)
-  StartTask (TaskId::Camp, TaskPri::kCamp, index, game.Time () + rg (8.0f, 16.0f), true);
+  // hold a nearby spot and watch the approach to protect the planted bomb (T) or the defusing teammate (CT)
+  StartTask (TaskId::Camp, TaskPri::kCamp, index, game.Time () + rg (8.0f, 15.0f), true);
   StartTask (TaskId::MoveTo, TaskPri::kMoveTo, index, 0.0f, true);
   SelectCampButtons (index);
 
-  bomb_guard_timer_.start (rg (5.0f, 10.0f));
+  bomb_guard_timer_.start (rg (4.0f, 8.0f));
 }
 
 void Bot::UpdateHostageEscort () {
@@ -1023,8 +1070,8 @@ void Bot::RefreshEnemyPredict () {
     return;
   }
 
-  // watch a visible spot while the enemy is still a live suspect
-  if (has_flag (states_, Sense::SuspectEnemy) && game.IsNullEntity (enemy_) && !game.IsNullEntity (last_enemy_) &&
+  // watch a visible spot (corner/chokepoint) while the enemy is suspected or heard behind cover
+  if (has_flag (states_, Sense::SuspectEnemy | Sense::HearingEnemy) && game.IsNullEntity (enemy_) && !game.IsNullEntity (last_enemy_) &&
       !last_enemy_origin_.empty ()) {
     const auto distance_to_last_enemy_sq = last_enemy_origin_.distance_sq (pev->origin);
 
@@ -1290,10 +1337,22 @@ bool Bot::TryTeleportToSealedBomb () {
 void Bot::SlowFrame () {
   TryTeleportToSealedBomb ();
 
+  if (game.MapIs (MapFlags::Demolition) && !game_state.IsBombPlanted () && team_ == Team::Terrorist && is_alive_ && has_c4_) {
+    const auto tid = GetTaskId ();
+    if (tid == TaskId::Camp || tid == TaskId::Hide || tid == TaskId::Pause) {
+      ClearTask (tid);
+    }
+    if (in_bomb_zone_ && !has_progress_bar_ && GetTaskId () != TaskId::PlantBomb && game.IsNullEntity (enemy_)) {
+      StartTask (TaskId::PlantBomb, TaskPri::kPlantBomb, kInvalidNodeIndex, 0.0f, true);
+    }
+  }
+
   if (game_state.IsBombPlanted () && team_ == Team::CT && is_alive_) {
+    bomb_known_ = true;
+    bots.SetBombKnown (Team::CT);
     const auto &bomb_position = game_state.GetBombOrigin ();
 
-    if (!has_progress_bar_ && GetTaskId () != TaskId::EscapeFromBomb && pev->origin.distance_sq (bomb_position) < ystl::sqrf (1540.0f) &&
+    if (!has_progress_bar_ && GetTaskId () != TaskId::EscapeFromBomb && !bomb_position.empty () &&
         !IsBombDefusing (bomb_position)) {
 
       ignored_items_.clear ();
@@ -1301,19 +1360,15 @@ void Bot::SlowFrame () {
 
       const auto tid = GetTaskId ();
 
-      if (tid == TaskId::Camp) {
-        ClearTask (GetTaskId ());
+      if (tid == TaskId::Camp || tid == TaskId::Hide || tid == TaskId::Pause) {
+        ClearTask (tid);
       }
 
-      // try pickup chain first, fall back to defuse task if bot lingers near bomb
+      // Start defusing immediately as soon as CT reaches within 150 units of the planted bomb (TaskDefuseBomb walks the final step onto the C4)
       if (tid != TaskId::DefuseBomb) {
-        if (bomb_position.distance_sq (pev->origin) >= ystl::sqrf (96.0f)) {
-          near_bomb_timer_.invalidate ();
-        }
-        else if (!near_bomb_timer_.started ()) {
-          near_bomb_timer_.start (rg (2.0f, 4.0f));
-        }
-        else if (near_bomb_timer_.elapsed ()) {
+        const bool safe_or_covered = game.IsNullEntity (enemy_) ||
+          (NumFriendsNear (pev->origin, 650.0f) >= 1 && pev->origin.distance_sq (enemy_->v.origin) > ystl::sqrf (300.0f));
+        if (bomb_position.distance_sq (pev->origin) < ystl::sqrf (150.0f) && safe_or_covered) {
           StartTask (TaskId::DefuseBomb, TaskPri::kDefuseBomb, kInvalidNodeIndex, 0.0f, true);
         }
       }
@@ -1334,7 +1389,7 @@ void Bot::SlowFrame () {
   }
 
   // kick the bot if stay time is over, the quota maintain will add new bot for us later
-  if (cv_rotate_bots && stay_timer_.elapsed () && HumanArena::MayLeave (*this)) {
+  if ((cv_internet_mode || cv_rotate_bots) && stay_timer_.elapsed () && HumanArena::MayLeave (*this)) {
     HumanArena::Leaving (*this);
     kicked_by_rotation_ = true; // kicked by rotation, so not save bot name if save bot names is active
 
@@ -1446,7 +1501,7 @@ void Bot::LogicDuringFreezetime () {
     return;
   }
 
-  if (rg.chance (15) && jump_time_ < game.Time ()) {
+  if (!HumanCopycat::Enabled () && rg.chance (15) && jump_time_ < game.Time ()) {
     pev->button |= IN_JUMP;
     jump_time_ = game.Time () + rg (1.0f, 3.0f);
   }
@@ -1588,11 +1643,15 @@ void Bot::Logic () {
     actual_reaction_time_ = ideal_reaction_time_;
   }
 
-  // bot could be blinded by flashbang or smoke, recover from it
-  view_distance_ += 3.0f;
-
-  if (view_distance_ > max_view_distance_) {
+  // recover immediately when not flashbanged so thin smoke never lingers like a flashbang
+  if (blind_timer_.elapsed ()) {
     view_distance_ = max_view_distance_;
+  }
+  else {
+    view_distance_ += 3.0f;
+    if (view_distance_ > max_view_distance_) {
+      view_distance_ = max_view_distance_;
+    }
   }
 
   if (!blind_timer_.elapsed ()) {
@@ -2283,7 +2342,9 @@ void Bot::UpdateHearing () {
   if (!HumanCopycat::Enabled () && !UsesKnife () && next_tracking_timer_.elapsed () && last_enemy_ == tracking_edict_ && game.IsAliveEntity (last_enemy_)) {
 
     heard_enemy_ = last_enemy_;
-    last_enemy_origin_ = last_enemy_->v.origin;
+    if (SeesEntity (last_enemy_->v.origin, true)) {
+      last_enemy_origin_ = last_enemy_->v.origin;
+    }
 
     // still register the contact, otherwise the heard state is silently consumed
     heard_sound_timer_.start ();
@@ -2419,10 +2480,11 @@ void Bot::UpdateHearing () {
       see_enemy_timer_.start ();
     }
 
-    // check if heard enemy can be shoot through some obstacle
+    // check if heard enemy can be shoot through some obstacle (never wall-track purely on footsteps)
     else {
-      if (!HumanCopycat::Enabled () && cv_shoots_thru_walls && last_enemy_ == heard_enemy_ && thru_wall_hold_timer_.elapsed () && thru_wall_reroll_timer_.elapsed () &&
-          see_enemy_timer_.less_than (3.0f) && IsPenetrableObstacleCached (heard_enemy_->v.origin)) {
+      if (!HumanCopycat::Enabled () && cv_shoots_thru_walls && !has_flag (best_sound_type, Noise::Footstep) &&
+          last_enemy_ == heard_enemy_ && thru_wall_hold_timer_.elapsed () && thru_wall_reroll_timer_.elapsed () &&
+          see_enemy_timer_.less_than (1.5f) && IsPenetrableObstacleCached (heard_enemy_->v.origin)) {
 
         // roll at most once per backoff interval, so the chance is per-attempt, not per-tick
         thru_wall_reroll_timer_.start (rg (0.75f, 1.5f));
@@ -2466,10 +2528,9 @@ void Bot::SelectCampButtons (int index) {
 }
 
 bool Bot::IsBombDefusing (const ystl::Vector &bomb_origin) const {
-  // this function finds if somebody currently defusing the bomb
-
-  constexpr auto kDistanceToBomb = ystl::sqrf (165.0f);
-  constexpr auto kApproachDistance = ystl::sqrf (512.0f); // detect approaching bots
+  // Only report true when a teammate is actually at the bomb and actively defusing,
+  // avoiding the mutual deadlock where approaching/guarding CTs prevented each other from defusing.
+  constexpr auto kDistanceToBomb = ystl::sqrf (120.0f);
 
   if (!game_state.IsBombPlanted ()) {
     return false;
@@ -2486,28 +2547,8 @@ bool Bot::IsBombDefusing (const ystl::Vector &bomb_origin) const {
     if (bot && bot->is_alive_ && bot->team_ == team_) {
       const auto task_id = bot->GetTaskId ();
 
-      // already defusing at bomb
       if (bomb_distance_sq < kDistanceToBomb && (task_id == TaskId::DefuseBomb || bot->has_progress_bar_)) {
         return true;
-      }
-
-      // approaching to defuse
-      if (bomb_distance_sq < kApproachDistance && task_id == TaskId::DefuseBomb) {
-        return true;
-      }
-
-      // has plantedc4 pickup task
-      if (bomb_distance_sq < kApproachDistance && bot->pickup_type_ == Pickup::PlantedC4) {
-        return true;
-      }
-
-      // has goal near bomb
-      if (bomb_distance_sq < kApproachDistance && task_id == TaskId::MoveTo && bot->Task ()->data != kInvalidNodeIndex) {
-
-        const auto &goal_origin = graph[bot->Task ()->data].origin;
-        if (goal_origin.distance_sq (bomb_origin) < kApproachDistance) {
-          return true;
-        }
       }
       continue;
     }

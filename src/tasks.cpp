@@ -46,8 +46,9 @@ void Bot::FilterTasks () {
     temp_agression = temp_agression * 0.5f;
   }
 
-  // bot found some item to use?
-  if (!game.IsNullEntity (pickup_item_) && GetTaskId () != TaskId::EscapeFromBomb) {
+  // bot found some item to use? (Never let item pickup interrupt active PlantBomb or DefuseBomb!)
+  if (!game.IsNullEntity (pickup_item_) && GetTaskId () != TaskId::EscapeFromBomb &&
+      GetTaskId () != TaskId::DefuseBomb && GetTaskId () != TaskId::PlantBomb) {
     states_ |= Sense::PickupItem;
 
     if (pickup_type_ == Pickup::Button) {
@@ -62,9 +63,22 @@ void Bot::FilterTasks () {
     pickup.desire = 0.0f;
   }
 
-  // calculate desire to attack
+  // calculate desire to attack (when defusing bomb with teammate cover or low bomb time, stick the defuse!)
   if (has_flag (states_, Sense::SeeingEnemy) && ReactOnEnemy ()) {
-    attack.desire = TaskPri::kAttack;
+    if (GetTaskId () == TaskId::DefuseBomb && game_state.IsBombPlanted ()) {
+      const float need_time = (has_defuser_ ? 7.0f : 12.0f) + 4.5f;
+      const bool covered_or_urgent = NumFriendsNear (pev->origin, 650.0f) >= 1 ||
+        game_state.GetBombTimeLeft () <= need_time ||
+        game.IsNullEntity (enemy_) ||
+        pev->origin.distance_sq (enemy_->v.origin) > ystl::sqrf (500.0f);
+      attack.desire = covered_or_urgent ? 0.0f : TaskPri::kAttack;
+      if (covered_or_urgent) {
+        old_combat_desire_ = 0.0f;
+      }
+    }
+    else {
+      attack.desire = TaskPri::kAttack;
+    }
   }
   else {
     attack.desire = 0.0f;
@@ -74,7 +88,7 @@ void Bot::FilterTasks () {
   float &blinded_desire = blind.desire;
 
   // calculate desires to seek cover or hunt
-  if (game.IsPlayerEntity (last_enemy_) && !last_enemy_origin_.empty () && !has_c4_) {
+  if (game.IsPlayerEntity (last_enemy_) && !last_enemy_origin_.empty () && !has_c4_ && !HasBombTask ()) {
     const float retreat_level = (pev->max_health - health_value_) * temp_fear; // retreat level depends on bot health
 
     if (is_creature_ || (num_friends_left_ > 0 && num_enemies_left_ > num_friends_left_ / 2)) {
@@ -210,6 +224,18 @@ void Bot::FilterTasks () {
 
   if (!tasks_.Empty ()) {
     auto *current = Task ();
+
+    // If an enemy is visible, abort any active grenade throw task so Attack takes over immediately
+    if (!IsGrenadeWar () && (has_flag (states_, Sense::SeeingEnemy) || !game.IsNullEntity (enemy_)) &&
+        (current->id == TaskId::ThrowExplosive || current->id == TaskId::ThrowFlashbang || current->id == TaskId::ThrowSmoke)) {
+      is_using_grenade_ = false;
+      aim_flags_ &= ~AimFlags::Grenade;
+      states_ &= ~(Sense::ThrowExplosive | Sense::ThrowFlashbang | Sense::ThrowSmoke);
+      pev->button &= ~IN_ATTACK;
+      SelectBestWeapon ();
+      CompleteTask ();
+      current = Task ();
+    }
 
     // steady state, keep the running goal
     if (final_task->desire <= current->desire) {
@@ -406,12 +432,22 @@ void Bot::TaskNormal () {
     reload_data_.state = Reload::Primary;
   }
 
-  // if bomb planted and it's a ct calculate new path to bomb point if he's not already heading for
-  if (!bomb_search_overridden_ && game_state.IsBombPlanted () && team_ == Team::CT && graph.Exists (Task ()->data) &&
-      !has_flag (graph[Task ()->data].flags, NodeFlag::Goal) && GetTaskId () != TaskId::EscapeFromBomb) {
+  // Highest priority for Terrorist bomb carrier: as soon as inside bombsite zone and out of immediate combat, plant immediately!
+  if (game.MapIs (MapFlags::Demolition) && team_ == Team::Terrorist && has_c4_ && in_bomb_zone_ &&
+      !game_state.IsBombPlanted () && !has_progress_bar_ && !game.IsAliveEntity (enemy_)) {
+    StartTask (TaskId::PlantBomb, TaskPri::kPlantBomb, kInvalidNodeIndex, 0.0f, true);
+    return;
+  }
 
-    ClearSearchNodes ();
-    Task ()->data = kInvalidNodeIndex;
+  // if bomb planted and it's a ct calculate new path to bomb point if he's not already heading for the planted bomb
+  if (game_state.IsBombPlanted () && team_ == Team::CT && GetTaskId () != TaskId::EscapeFromBomb && graph.Exists (Task ()->data)) {
+    const auto &bomb_origin = game_state.GetBombOrigin ();
+    if ((!bomb_search_overridden_ && !has_flag (graph[Task ()->data].flags, NodeFlag::Goal)) ||
+        (!bomb_origin.empty () && graph[Task ()->data].origin.distance_sq (bomb_origin) > ystl::sqrf (350.0f))) {
+      ClearSearchNodes ();
+      Task ()->data = kInvalidNodeIndex;
+      path_enqueue_timer_.invalidate ();
+    }
   }
 
   // reached the destination (goal) node?
@@ -436,8 +472,8 @@ void Bot::TaskNormal () {
       }
     }
 
-    // reached node is a camp node
-    if (has_flag (path_flags_, NodeFlag::Camp) && !game.Is (GameFlags::CSDM) && cv_camping_allowed && !IsKnifeMode ()) {
+    // reached node is a camp node (Level 4 progressive unshackling overrides random static waypoint camping)
+    if (!HumanArena::AutonomousOverride (*this) && has_flag (path_flags_, NodeFlag::Camp) && !game.Is (GameFlags::CSDM) && cv_camping_allowed && !IsKnifeMode ()) {
       const bool allowed_camp_weapon =
         HasPrimaryWeapon () || HasShield () || (HasSecondaryWeapon () && !HasPrimaryWeapon () && num_friends_left_ > game.MaxClients () / 6);
 
@@ -527,19 +563,13 @@ void Bot::TaskNormal () {
       }
 
       // was elseif here but brokes csde_ scenario
-      if (game.MapIs (MapFlags::Demolition) && has_flag (path_flags_, NodeFlag::Goal) && in_bomb_zone_) {
-        // is it a terrorist carrying the bomb?
+      if (game.MapIs (MapFlags::Demolition) && (has_flag (path_flags_, NodeFlag::Goal) || has_c4_) && in_bomb_zone_) {
+        // is it a terrorist carrying the bomb? Plant immediately as #1 priority!
         if (has_c4_) {
           if (has_flag (states_, Sense::SeeingEnemy) && NumFriendsNear (pev->origin, 768.0f) == 0) {
-            // request an help also
             PushRadioChat (RadioChat::NeedBackup);
-            PushRadioChat (RadioChat::ScaredEmotion);
-
-            StartTask (TaskId::Camp, TaskPri::kCamp, kInvalidNodeIndex, game.Time () + rg (4.0f, 8.0f), true);
           }
-          else {
-            StartTask (TaskId::PlantBomb, TaskPri::kPlantBomb, kInvalidNodeIndex, 0.0f, true);
-          }
+          StartTask (TaskId::PlantBomb, TaskPri::kPlantBomb, kInvalidNodeIndex, 0.0f, true);
         }
         else if (team_ == Team::CT) {
           if (!game_state.IsBombPlanted () && NumFriendsNear (pev->origin, 210.0f) < 4) {
@@ -564,14 +594,21 @@ void Bot::TaskNormal () {
   }
   // no more nodes to follow - search new ones (or we have a bomb)
   else if (!HasActiveGoal ()) {
-    IgnoreCollision ();
+    if (!has_c4_ && !game_state.IsBombPlanted ()) {
+      IgnoreCollision ();
+    }
 
     // did we already decide about a goal before?
     const auto curr_index = Task ()->data;
+    const bool keep_c4_goal = has_c4_ && graph.Exists (curr_index) && has_flag (graph[curr_index].flags, NodeFlag::Goal);
+    const bool ct_needs_bomb_goal = game.MapIs (MapFlags::Demolition) && game_state.IsBombPlanted () && team_ == Team::CT &&
+      !game_state.GetBombOrigin ().empty () &&
+      (!graph.Exists (curr_index) || graph[curr_index].origin.distance_sq (game_state.GetBombOrigin ()) > ystl::sqrf (350.0f));
 
-    // respect debug goal even for c4/vip bots
-    auto dest_index =
-      graph.Exists (debug_goal) ? debug_goal : (graph.Exists (curr_index) && !has_c4_ && !is_vip_ ? curr_index : FindBestGoal ());
+    // respect debug goal even for c4/vip bots; preserve valid C4 goal node so carrier never flip-flops
+    auto dest_index = graph.Exists (debug_goal)
+      ? debug_goal
+      : (!ct_needs_bomb_goal && graph.Exists (curr_index) && (keep_c4_goal || (!has_c4_ && !is_vip_)) ? curr_index : FindBestGoal ());
 
     // check for existence (this is fail over, for i.e
     if (!graph.Exists (dest_index)) {
@@ -584,9 +621,9 @@ void Bot::TaskNormal () {
 
     auto pst = HumanCopycat::Enabled () && cv_human_route_variety ? FindPathType::Diversity : path_type_;
 
-    // override with fast path
-    if (game.MapIs (MapFlags::Demolition) && game_state.IsBombPlanted ()) {
-      pst = rg.chance (80) ? FindPathType::Fast : FindPathType::Optimal;
+    // override with fast path for bomb carrier and when bomb is planted
+    if (game.MapIs (MapFlags::Demolition) && (has_c4_ || game_state.IsBombPlanted ())) {
+      pst = FindPathType::Fast;
     }
     EnsureCurrentNodeIndex ();
 
@@ -733,6 +770,10 @@ void Bot::TaskHunt () {
 
 void Bot::TaskSeekCover () {
   aim_flags_ |= AimFlags::Nav;
+  if (HumanArena::AutonomousOverride (*this) && pev->health >= 38.0f && !reload_data_.is_reloading) {
+    CompleteTask ();
+    return;
+  }
 
   if (!game.IsAliveEntity (last_enemy_)) {
     cover_search_timer_.start (rg (3.0f, 6.0f));
@@ -1156,12 +1197,9 @@ void Bot::TaskPlantBomb () {
       }
     }
     else {
-      if (!has_progress_bar_ && HumanArena::ObjectiveSmoke (*this, false)) {
-        move_to_goal_ = check_terrain_ = false;
-        move_speed_ = strafe_speed_ = 0.0f;
-        pev->button &= ~(IN_ATTACK | IN_USE);
-        IgnoreCollision ();
-        return;
+      // Request teammate smoke cover if available, but NEVER delay or freeze the bomb plant itself
+      if (!has_progress_bar_) {
+        (void)HumanArena::ObjectiveSmoke (*this, false);
       }
       if (current_weapon_ != Weapon::C4) {
         SelectWeaponById (Weapon::C4);
@@ -1260,15 +1298,13 @@ void Bot::TaskDefuseBomb () {
   else if (defuse_remaining_time > time_to_blow_up) {
     defuse_error = true;
   }
-  else if (has_flag (states_, Sense::SeeingEnemy)) {
+  else if (has_flag (states_, Sense::SeeingEnemy) && game.IsAliveEntity (enemy_)) {
     const int friends = NumFriendsNear (pev->origin, 768.0f);
 
-    if (friends < 2 && defuse_remaining_time < time_to_blow_up) {
+    // Stick the defuse unless an alive enemy is directly visible, no teammate covers us, and plenty of time remains
+    if (friends < 1 && defuse_remaining_time + 4.5f < time_to_blow_up &&
+        pev->origin.distance_sq (enemy_->v.origin) < ystl::sqrf (700.0f)) {
       defuse_error = true;
-
-      if (defuse_remaining_time + 2.0f > time_to_blow_up) {
-        defuse_error = false;
-      }
 
       if (num_enemies_left_ > 0 && num_friends_left_ > friends) {
         PushRadioChat (RadioChat::NeedBackup);
@@ -1293,19 +1329,15 @@ void Bot::TaskDefuseBomb () {
     return;
   }
 
-  if (!has_progress_bar_ && HumanArena::ObjectiveSmoke (*this, true)) {
-    defuse_watch_timer_.invalidate ();
-    move_to_goal_ = check_terrain_ = false;
-    move_speed_ = strafe_speed_ = 0.0f;
-    pev->button &= ~(IN_ATTACK | IN_USE);
-    IgnoreCollision ();
-    return;
+  // Request teammate smoke cover if available, but NEVER delay or freeze the CT bomb defuse
+  if (!has_progress_bar_) {
+    (void)HumanArena::ObjectiveSmoke (*this, true);
   }
 
   // if the defuse hasn't actually started within a reasonable time (i.e
   if (!has_progress_bar_) {
     if (!defuse_watch_timer_.started ()) {
-      defuse_watch_timer_.start (rg (4.0f, 6.0f));
+      defuse_watch_timer_.start (rg (8.0f, 11.0f));
     }
     else if (defuse_watch_timer_.elapsed ()) {
       defuse_watch_timer_.invalidate ();
@@ -1362,6 +1394,7 @@ void Bot::TaskDefuseBomb () {
 
   dest_origin_ = bomb_pos;
   entity_ = bomb_pos;
+  look_at_ = bomb_pos;
 
   // prefer the carried bomb, fall back to the tracked bomb entity
   auto bomb_entity = pickup_item_;
@@ -1370,66 +1403,41 @@ void Bot::TaskDefuseBomb () {
     bomb_entity = game_state.GetBombEntity ();
   }
 
-  const bool bomb_close = !game.IsNullEntity (bomb_entity) && game.GetEntityOrigin (bomb_entity).distance_sq (pev->origin) < ystl::sqrf (96.0f);
+  const float dist_sq_3d = (!game.IsNullEntity (bomb_entity) ? game.GetEntityOrigin (bomb_entity) : bomb_pos).distance_sq (pev->origin);
+  const float dist_sq_2d = bomb_pos.distance_sq2d (pev->origin);
+  const bool bomb_in_use_range = dist_sq_3d < ystl::sqrf (72.0f);
+  const bool bomb_approaching = dist_sq_3d < ystl::sqrf (170.0f);
 
-  pev->button |= IN_USE;
-
-  // if defusing is not already started, maybe crouch before
-  if (!has_progress_bar_ && duck_defuse_check_timer_.elapsed ()) {
-    ystl::Vector bot_duck_origin {}, bot_stand_origin {};
-
-    if (pev->button & IN_DUCK) {
-      bot_duck_origin = pev->origin;
-      bot_stand_origin = pev->origin + ystl::Vector (0.0f, 0.0f, 18.0f);
-    }
-    else {
-      bot_duck_origin = pev->origin - ystl::Vector (0.0f, 0.0f, 18.0f);
-      bot_stand_origin = pev->origin;
-    }
-
-    const float duck_distance_sq = entity_.distance_sq (bot_duck_origin);
-    const float stand_distance_sq = entity_.distance_sq (bot_stand_origin);
-
-    if (duck_distance_sq > ystl::sqrf (75.0f) || stand_distance_sq > ystl::sqrf (75.0f)) {
-      if (stand_distance_sq < duck_distance_sq) {
-        duck_defuse_ = false; // stand
-      }
-      else {
-        duck_defuse_ = num_enemies_left_ != 0 && rg.chance (Skill ()); // duck
-      }
-    }
-    duck_defuse_check_timer_.start (5.0f);
-  }
-
-  // press duck button
-  if (duck_defuse_ || (old_buttons_ & IN_DUCK)) {
-    pev->button |= IN_DUCK;
-  }
-  else {
-    pev->button &= ~IN_DUCK;
-  }
-
-  // we are defusing bomb
-  if (has_progress_bar_ || (old_buttons_ & IN_USE) || !game.IsNullEntity (pickup_item_) || bomb_close) {
-    pev->button |= IN_USE;
-
-    if (bomb_close) {
-      MDLL_Use (bomb_entity, Ent ());
-    }
-
-    // defusing cancels any reload intent
+  // we are defusing or walking the final step onto the bomb
+  if (has_progress_bar_ || !game.IsNullEntity (pickup_item_) || bomb_approaching) {
     reload_data_.state = Reload::None;
     nav_timer_.start ();
 
-    // don't move when defusing
-    move_to_goal_ = false;
-    check_terrain_ = false;
+    // Keep moving directly onto the C4 until has_progress_bar_ starts or we are within 36 units of the C4!
+    if (!has_progress_bar_ && dist_sq_2d > ystl::sqrf (36.0f)) {
+      move_to_goal_ = true;
+      check_terrain_ = true;
+      move_speed_ = pev->maxspeed;
+      strafe_speed_ = 0.0f;
+      pev->button &= ~IN_DUCK;
+    }
+    else {
+      move_to_goal_ = false;
+      check_terrain_ = false;
+      move_speed_ = 0.0f;
+      strafe_speed_ = 0.0f;
+      pev->button |= IN_DUCK;
+    }
 
-    move_speed_ = 0.0f;
-    strafe_speed_ = 0.0f;
+    if (bomb_in_use_range || has_progress_bar_) {
+      pev->button |= IN_USE;
+      if (!game.IsNullEntity (bomb_entity)) {
+        MDLL_Use (bomb_entity, Ent ());
+      }
+    }
 
     // notify team
-    if (num_friends_left_ > 0) {
+    if (num_friends_left_ > 0 && has_progress_bar_) {
       PushRadioChat (RadioChat::DefusingBomb);
 
       if (num_enemies_left_ > 0 && NumFriendsNear (pev->origin, 512.0f) < 2) {
@@ -1541,15 +1549,15 @@ void Bot::TaskFollowUser () {
 void Bot::TaskThrowExplosive () {
   ystl::Vector dest = throw_;
 
-  if (!has_flag (states_, Sense::SeeingEnemy)) {
-    if (!cv_move_during_throw) {
-      strafe_speed_ = 0.0f;
-      move_speed_ = 0.0f;
-      move_to_goal_ = false;
-    }
+  if (!IsGrenadeWar () && (has_flag (states_, Sense::SeeingEnemy) || !game.IsNullEntity (enemy_))) {
+    is_using_grenade_ = false; aim_flags_ &= ~AimFlags::Grenade;
+    states_ &= ~Sense::ThrowExplosive; pev->button &= ~IN_ATTACK;
+    SelectBestWeapon (); CompleteTask (); return;
   }
-  else if (!has_flag (states_, Sense::SuspectEnemy) && !game.IsNullEntity (enemy_)) {
-    dest = throw_;
+  if (!cv_move_during_throw) {
+    strafe_speed_ = 0.0f;
+    move_speed_ = 0.0f;
+    move_to_goal_ = false;
   }
   if (Task ()->time < game.Time () || !IsGrenadeTargetSafe (Weapon::Explosive, dest)) {
     is_using_grenade_ = false; aim_flags_ &= ~AimFlags::Grenade;
@@ -1614,15 +1622,15 @@ void Bot::TaskThrowExplosive () {
 void Bot::TaskThrowFlashbang () {
   ystl::Vector dest = throw_;
 
-  if (!has_flag (states_, Sense::SeeingEnemy)) {
-    if (!cv_move_during_throw) {
-      strafe_speed_ = 0.0f;
-      move_speed_ = 0.0f;
-      move_to_goal_ = false;
-    }
+  if (!IsGrenadeWar () && (has_flag (states_, Sense::SeeingEnemy) || !game.IsNullEntity (enemy_))) {
+    is_using_grenade_ = false; aim_flags_ &= ~AimFlags::Grenade;
+    states_ &= ~Sense::ThrowFlashbang; pev->button &= ~IN_ATTACK;
+    SelectBestWeapon (); CompleteTask (); return;
   }
-  else if (!has_flag (states_, Sense::SuspectEnemy) && !game.IsNullEntity (enemy_)) {
-    dest = throw_;
+  if (!cv_move_during_throw) {
+    strafe_speed_ = 0.0f;
+    move_speed_ = 0.0f;
+    move_to_goal_ = false;
   }
 
   if (Task ()->time < game.Time () || !IsGrenadeTargetSafe (Weapon::Flashbang, dest)) {
@@ -1685,7 +1693,12 @@ void Bot::TaskThrowFlashbang () {
 }
 
 void Bot::TaskThrowSmoke () {
-  if (!has_flag (states_, Sense::SeeingEnemy) && !cv_move_during_throw) {
+  if (!IsGrenadeWar () && (has_flag (states_, Sense::SeeingEnemy) || !game.IsNullEntity (enemy_))) {
+    is_using_grenade_ = false; aim_flags_ &= ~AimFlags::Grenade;
+    states_ &= ~Sense::ThrowSmoke; pev->button &= ~IN_ATTACK;
+    SelectBestWeapon (); CompleteTask (); return;
+  }
+  if (!cv_move_during_throw) {
     strafe_speed_ = 0.0f;
     move_speed_ = 0.0f;
     move_to_goal_ = false;
@@ -1707,6 +1720,7 @@ void Bot::TaskThrowSmoke () {
 
   if (grenade_.length_sq () <= 100.0f) {
     grenade_check_timer_.start (kGrenadeCheckTime * 2.0f);
+    is_using_grenade_ = false; aim_flags_ &= ~AimFlags::Grenade;
 
     SelectBestWeapon ();
     CompleteTask ();
@@ -1715,6 +1729,8 @@ void Bot::TaskThrowSmoke () {
   }
 
   if (Task ()->time < game.Time ()) {
+    is_using_grenade_ = false; aim_flags_ &= ~AimFlags::Grenade;
+    SelectBestWeapon ();
     CompleteTask ();
     return;
   }
@@ -1728,6 +1744,7 @@ void Bot::TaskThrowSmoke () {
         SelectWeaponById (Weapon::Smoke);
       }
       else {
+        is_using_grenade_ = false; aim_flags_ &= ~AimFlags::Grenade;
         SelectBestWeapon ();
         CompleteTask ();
 

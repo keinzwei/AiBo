@@ -190,7 +190,7 @@ void GraphAnalyze::Start () {
 
   // start analyzer in few seconds after level initialized
   if (cv_graph_analyze_auto_start) {
-    update_timer_.start (3.0f);
+    update_timer_.start (cv_single_dll_mode ? 0.25f : 3.0f);
     quiet_timer_.invalidate ();
     basics_created_ = false;
 
@@ -205,15 +205,16 @@ void GraphAnalyze::Start () {
     // set as we're analyzing
     is_analyzing_ = true;
 
-    // silence all graph messages
+    // silence all graph messages and ensure waypoint drawing is off
     graph.SetMessageSilence (true);
+    graph.ClearEditFlag (GraphEdit::On | GraphEdit::Auto | GraphEdit::Noclip);
+    ctrl.EnableDrawModels (false);
 
     // set all nodes as not expanded
     ystl::fill (expanded_nodes_, false);
 
     // set all nodes as not optimized
     ystl::fill (optimized_nodes_, false);
-    ctrl.Msg ("Starting map analysis.");
   }
   else {
     update_timer_.invalidate ();
@@ -356,6 +357,10 @@ void GraphAnalyze::Update () {
     }
   }
 
+  if (cv_single_dll_mode) {
+    graph.ClearChangedFlag ();
+    graph.ClearEditFlag (GraphEdit::On | GraphEdit::Auto | GraphEdit::Noclip);
+  }
   // full scan without progress means the flood settled
   if (expanded || graph.Length () != length_at_start) {
     quiet_timer_.invalidate ();
@@ -485,13 +490,24 @@ void GraphAnalyze::RunFinishSlice () {
     is_analyzing_ = false;
     update_timer_.invalidate ();
 
-    // un-silence all graph messages
+    // un-silence all graph messages and guarantee waypoint display remains off
     graph.SetMessageSilence (false);
+    graph.ClearEditFlag (GraphEdit::On | GraphEdit::Auto | GraphEdit::Noclip);
+    ctrl.EnableDrawModels (false);
 
-    ctrl.Msg ("Completed map analysis. Total nodes: %d.", graph.Length ());
-
-    // auto save bots graph
-    if (cv_graph_analyze_auto_save) {
+    // In Single-DLL Mode, finalize the analyzed graph in RAM AND auto-save it to disk (auto-creating data/graph/)
+    if (cv_single_dll_mode) {
+      RepairConnectivity ();
+      graph.FinalizeInMemoryGraph ();
+      if (cv_graph_analyze_auto_save) {
+        graph.SaveGraphData ();
+      }
+      graph.ClearEditFlag (GraphEdit::On | GraphEdit::Auto | GraphEdit::Noclip);
+      vistab.StartRebuild ();
+      ctrl.EnableDrawModels (false);
+      cv_quota.Revert ();
+    }
+    else if (cv_graph_analyze_auto_save) {
       // never persist a graph that fails sanity, repair first
       if (!RepairConnectivity ()) {
         LogSanityBreakdown ();
@@ -1294,13 +1310,18 @@ bool GraphAnalyze::Repair () {
     }
   }
 
-  ctrl.Msg ("Graph repair finished. Nodes: %d -> %d, sanity %s.", nodes_before, nodes_after, sane ? "OK" : "FAILED");
+  if (ctrl.IsDebug ()) {
+    ctrl.Msg ("Graph repair finished. Nodes: %d -> %d, sanity %s.", nodes_before, nodes_after, sane ? "OK" : "FAILED");
+  }
   LogSanityBreakdown ();
 
   return sane;
 }
 
 void GraphAnalyze::DisplayOverlayMessage () const {
+  if (true) {
+    return; // Never display intrusive map analysis HUD overlay on player screen
+  }
   auto listenserver_edict = game.GetLocalEntity ();
 
   if (game.IsNullEntity (listenserver_edict) || !is_analyzing_) {
@@ -1533,7 +1554,7 @@ bool GraphAnalyze::MarkCampsSlice () {
   }
   const bool done = camp_cursor_ >= n || camps_marked_ >= kMaxCamps;
 
-  if (done && camps_marked_ > 0) {
+  if (done && camps_marked_ > 0 && ctrl.IsDebug ()) {
     ctrl.Msg ("Marked %d corner camp spots.", camps_marked_);
   }
   return done;

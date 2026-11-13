@@ -191,6 +191,8 @@ public:
 // bot navigation data mixin
 class NavigateData {
   friend class DebugPanel;
+  friend class HumanCopycat;
+  friend class HumanArena;
   friend struct NavigateHook;
   friend struct PracticeHook;
   friend struct BehaviorHook;

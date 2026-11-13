@@ -1,4 +1,4 @@
-// AiBo Human Copycat 4.2.6. GPL-2.0-or-later; see COPYING.GPL-2.0.
+// AiBo Human Copycat 4.3.5 + Level 1 Generative & Continuous Learning. GPL-2.0-or-later; see COPYING.GPL-2.0.
 #pragma once
 
 namespace rbcc { struct Clip; }
@@ -29,6 +29,7 @@ public:
   static bool SpreadActive ();
   static bool MayAssist (const Bot &bot, const ystl::Vector &origin);
   static float RouteWeight (Team team, int node);
+  static float OpponentAggression (Team botTeam);
   static bool NavigatingHuman (const Bot &bot);
   static bool Navigate (Bot &bot, HumanCommand &cmd, ystl::Vector &desired);
   static void Finalize (Bot &bot, HumanCommand &cmd);
@@ -57,6 +58,8 @@ public:
   static uint32_t TestLearningTeamRounds ();
   static int TestLearningAction (const Bot &bot);
   static uint32_t TestLearningObservations (Team team);
+  static uint32_t TestMlpUpdates ();
+  static size_t TestTrackedPlayers ();
 #endif
 };
 } // namespace bot

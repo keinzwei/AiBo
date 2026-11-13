@@ -360,14 +360,16 @@ bool Bot::NeedToPauseFiring (float distance) {
     }
   }
 
-  // close range, never pause, just spray
-  if (distance < kSprayDistance) {
+  const bool is_ak_or_m4 = (current_weapon_ == Weapon::AK47 || current_weapon_ == Weapon::M4A1);
+
+  // close range (or mid-close range with AK47/M4A4 spray control), keep spraying
+  if (distance < kSprayDistance || (is_ak_or_m4 && distance < 450.0f && difficulty_ >= Difficulty::Normal)) {
     return false;
   }
 
   // calculate base offset and pause time based on distance
-  float base_offset = 3.0f;
-  float base_pause_time = 0.55f;
+  float base_offset = is_ak_or_m4 ? 5.5f : 3.0f;
+  float base_pause_time = is_ak_or_m4 ? 0.28f : 0.55f;
 
   if (distance < kSprayDistanceX2) {
 
@@ -375,13 +377,17 @@ bool Bot::NeedToPauseFiring (float distance) {
     if (has_flag (states_, Sense::SuspectEnemy)) {
       return false;
     }
-    base_offset = 2.0f;
-    base_pause_time = 0.38f;
+    base_offset = is_ak_or_m4 ? 4.5f : 2.0f;
+    base_pause_time = is_ak_or_m4 ? 0.20f : 0.38f;
   }
 
-  // pistols recover faster, so use shorter pauses for them
+  // pistols recover faster, with Edward & SpawN Deagle discipline
   if (UsesPistol ()) {
-    base_pause_time = distance < kSprayDistanceX2 ? 0.18f : 0.25f;
+    if (current_weapon_ == Weapon::Deagle) {
+      base_pause_time = distance < 300.0f ? 0.16f : 0.24f;
+    } else {
+      base_pause_time = distance < kSprayDistanceX2 ? 0.14f : 0.20f;
+    }
   }
   constexpr float kToleranceExpert = 0.0f;
   constexpr float kToleranceNoob = 1.0f;
@@ -477,9 +483,9 @@ bool Bot::CheckZoom (float distance) {
 
   if (zoom_change && zoom_check_timer_.elapsed ()) {
     pev->button |= IN_ATTACK2;
-    shoot_time_ = game.Time () + 0.15f;
+    shoot_time_ = game.Time () + (difficulty_ == Difficulty::Expert ? 0.05f : 0.12f);
 
-    zoom_check_timer_.start (0.5f);
+    zoom_check_timer_.start (difficulty_ == Difficulty::Expert ? 0.20f : 0.35f);
   }
   return zoom_change;
 }
@@ -487,10 +493,11 @@ bool Bot::CheckZoom (float distance) {
 void Bot::HandleWeapons (float distance, int, Weapon id, int choosen) {
   const auto &tab = conf.GetWeapons ();
 
-  // never switch weapons mid-reload, wait until it finishes
+  // if reloading when an enemy appears and secondary has ammo, cancel reload immediately to switch to secondary!
   if (reload_data_.is_reloading) {
-    if (reload_data_.state == Reload::None || GetAmmoInClip () >= conf.FindWeaponById (current_weapon_).max_clip || GetAmmo () <= 0) {
-      reload_data_.is_reloading = false; // stale flag, no active reload sequence
+    if (reload_data_.state == Reload::None || GetAmmoInClip () >= conf.FindWeaponById (current_weapon_).max_clip || GetAmmo () <= 0 ||
+        (has_flag (states_, Sense::SeeingEnemy) && HasAnotherWeaponWithAmmoInClip (current_weapon_))) {
+      reload_data_.Clear ();
     }
     else {
       return;
@@ -560,8 +567,10 @@ void Bot::HandleWeapons (float distance, int, Weapon id, int choosen) {
   }
   const float time_delta = game.Time () - frame_interval_;
 
+  const bool ak_m4_spray = (id == Weapon::AK47 || id == Weapon::M4A1) && distance < 520.0f && difficulty_ >= Difficulty::Normal;
+
   // need to care for burst fire?
-  if ((distance < kSprayDistance && !IsRecoilHigh ()) || !blind_timer_.elapsed () || UsesKnife ()) {
+  if (((distance < kSprayDistance || ak_m4_spray) && !IsRecoilHigh ()) || !blind_timer_.elapsed () || UsesKnife ()) {
     if (id == Weapon::Knife) {
       const float min_attack_distance = is_creature_ ? 80.0f : 72.0f;
 
@@ -684,6 +693,15 @@ void Bot::FireWeapons () {
     }
   }
 
+  // Honor active pro primary-to-secondary switch (AWP -> Deagle/Pistol or AK-47/M4A1 -> Deagle/Pistol)
+  const int best_pistol_idx = GetBestOwnedPistolIndex ();
+  if (best_pistol_idx > 0 && ammo_in_clip_[tab[best_pistol_idx].id] > 0 && HumanAimCoach::HoldingSecondary (*this)) {
+    choosen_weapon = best_pistol_idx;
+    select_id = tab[choosen_weapon].id;
+    HandleWeapons (distance, select_index, select_id, choosen_weapon);
+    return;
+  }
+
   // loop through all the weapons
   for (select_index = 0; select_index < tab.size<int32_t> (); ++select_index) {
     const auto wid = tab[select_index].id;
@@ -743,56 +761,59 @@ void Bot::FireWeapons () {
 }
 
 bool Bot::IsWeaponBadAtDistance (int weapon_index, float distance) {
-  // check if the pistol beats the primary weapon at this distance
-
-  // do not switch weapons when crossing the distance line
+  // Checks whether the secondary weapon (Deagle / USP / Glock18) should be drawn instead of the primary weapon (AWP / AK-47 / M4A1)
   const auto &tab = conf.GetWeapons ();
 
   if (difficulty_ < Difficulty::Easy || !HasSecondaryWeapon ()) {
     return false;
   }
+  const auto wid = tab[weapon_index].id;
   const auto weapon_type = tab[weapon_index].type;
 
-  if (weapon_type == WeaponType::Melee || !(weapon_type == WeaponType::Shotgun || weapon_type == WeaponType::Sniper)) {
+  if (weapon_type == WeaponType::Melee || weapon_type == WeaponType::Pistol) {
     return false;
   }
 
-  // check is ammo available for secondary weapon (uses index, convert to id for array access)
-  if (ammo_in_clip_[tab[GetBestOwnedPistolIndex ()].id] <= 0) {
+  // Ensure secondary weapon has ammo in its magazine
+  const int best_pistol_idx = GetBestOwnedPistolIndex ();
+  if (best_pistol_idx <= 0 || ammo_in_clip_[tab[best_pistol_idx].id] <= 0) {
     return false;
   }
 
-  // scout sniper can shoot at any distance, do not switch
-  if (current_weapon_ == Weapon::Scout) {
-    return false;
-  }
-
-  // prevent rapid weapon switching (to-and-back) - add delay after switch
-  const float k_weapon_switch_delay = 3.0f; // seconds to wait before allowing another switch
-
-  if (last_weapon_switch_timer_.less_than (k_weapon_switch_delay)) {
-    // keep whatever the bot holds right now until cooldown expires
-    return tab[weapon_index].id != current_weapon_;
-  }
-
-  // if already shooting or very close to enemy, don't switch sniper (causes delay, bot dies while switching)
-  if (weapon_type == WeaponType::Sniper) {
-
-    // if bot is actively firing or enemy is very close, just shoot instead of switching
-    const bool is_actively_firing = (old_buttons_ & IN_ATTACK) || last_fired_timer_.less_than (0.3f);
-    const bool is_enemy_very_close = distance < 150.0f; // too close to safely switch
-
-    if (is_actively_firing || is_enemy_very_close) {
-      return false;
-    }
-  }
-
-  // better use pistol in short range distances, when using sniper weapons
-  if (weapon_type == WeaponType::Sniper && distance < 400.0f) {
+  // Respect active pro primary-to-secondary quick-switch / follow-up state from HumanAimCoach
+  if ((weapon_type == WeaponType::Sniper || weapon_type == WeaponType::Rifle || weapon_type == WeaponType::ZoomRifle) &&
+      HumanAimCoach::HoldingSecondary (*this)) {
     return true;
   }
 
-  // shotguns is too inaccurate at long distances, so weapon is bad
+  // Pro AWP -> Secondary (Deagle / Pistol) switching:
+  // Switch immediately after firing an AWP shot during bolt recovery, or when enemy closes in (< 450u)
+  if (wid == Weapon::AWP || weapon_type == WeaponType::Sniper) {
+    if (wid == Weapon::Scout) {
+      return false;
+    }
+    if (last_fired_timer_.less_than (1.20f) && (distance < 900.0f || has_flag (states_, Sense::SeeingEnemy))) {
+      return true;
+    }
+    if (distance < 450.0f) {
+      return true;
+    }
+  }
+
+  // Pro AK-47 / M4A1 -> Secondary (Deagle / Pistol) switching:
+  // Switch immediately to secondary pistol when rifle clip is critically low (<= 3 bullets) mid-fight
+  if (wid == Weapon::AK47 || wid == Weapon::M4A1 || weapon_type == WeaponType::Rifle) {
+    if (ammo_in_clip_[wid] <= 3 && distance < 850.0f && has_flag (states_, Sense::SeeingEnemy)) {
+      return true;
+    }
+  }
+
+  // Prevent non-tactical oscillation
+  const float k_weapon_switch_delay = 0.85f;
+  if (last_weapon_switch_timer_.less_than (k_weapon_switch_delay)) {
+    return tab[weapon_index].id != current_weapon_;
+  }
+
   if (weapon_type == WeaponType::Shotgun && distance > 750.0f) {
     return true;
   }
@@ -917,11 +938,20 @@ bool Bot::RateGroundWeapon (edict_t *ent) {
     }
   }
   if (ground_table_index < 0 || !human_policy::Usable (tab[ground_table_index].id)) return false;
-  if (tab[ground_table_index].id == Weapon::AWP && human_policy::RifleProfile (Ent ())) return false;
-  if (human_policy::AwpProfile (Ent ())) {
-    if (tab[ground_table_index].id == Weapon::AWP && !IsWeaponRestricted (Weapon::AWP)) return true;
-    if ((tab[ground_table_index].id == Weapon::AK47 || tab[ground_table_index].id == Weapon::M4A1) &&
-        has_flag (pev->weapons, ystl::bit (Weapon::AWP))) return false;
+  if (tab[ground_table_index].id == Weapon::AWP && !IsWeaponRestricted (Weapon::AWP)) {
+    int count = 0, carried = 0;
+    for (const auto &mate : bots) {
+      if (mate.team_ != team_) continue;
+      ++count;
+      if (has_flag (mate.pev->weapons, ystl::bit (Weapon::AWP))) ++carried;
+    }
+    const int quota = human_policy::SniperQuota (count, cv_human_awp_percent.As<int> (), HumanCopycat::RoundNumber ());
+    if (carried >= quota) return false;
+    if (human_policy::AwpProfile (Ent ()) || !HasPrimaryWeapon ()) return true;
+  }
+  if (has_flag (pev->weapons, ystl::bit (Weapon::AWP)) &&
+      (tab[ground_table_index].id == Weapon::AK47 || tab[ground_table_index].id == Weapon::M4A1)) {
+    return false;
   }
   int has_weapon = 0;
 
@@ -1027,9 +1057,25 @@ void Bot::SelectBestWeapon () {
   }
 
   if (reload_data_.is_reloading) {
-    return;
+    if (has_flag (states_, Sense::SeeingEnemy) && HasAnotherWeaponWithAmmoInClip (current_weapon_)) {
+      reload_data_.Clear ();
+    }
+    else {
+      return;
+    }
   }
   const auto &tab = conf.GetWeapons ();
+
+  if (HumanAimCoach::HoldingSecondary (*this) && HasSecondaryWeapon ()) {
+    const int sec_idx = GetBestOwnedPistolIndex ();
+    if (sec_idx > 0 && ammo_in_clip_[tab[sec_idx].id] > 0) {
+      if (current_weapon_ != tab[sec_idx].id) {
+        SelectWeaponById (tab[sec_idx].id);
+      }
+      reload_data_.Clear ();
+      return;
+    }
+  }
 
   int select_index = 0;
   int chosen_weapon_index = 0;
@@ -1055,8 +1101,11 @@ void Bot::SelectBestWeapon () {
       ammo_left = true;
     }
 
-    // skip empty magazines while an enemy is near another loaded gun
-    if (ammo_left && ammo_in_clip_[id] == 0 && has_flag (states_, Sense::SeeingEnemy | Sense::HearingEnemy) &&
+    // skip empty or critically low magazines while an enemy is visible/near and secondary gun is loaded
+    const bool critical_low_in_fight = (id == Weapon::AK47 || id == Weapon::M4A1) &&
+      ammo_in_clip_[id] <= 2 && has_flag (states_, Sense::SeeingEnemy);
+    if (ammo_left && (ammo_in_clip_[id] == 0 || critical_low_in_fight) &&
+        has_flag (states_, Sense::SeeingEnemy | Sense::HearingEnemy) &&
         HasAnotherWeaponWithAmmoInClip (id)) {
       ammo_left = false;
     }
@@ -1869,8 +1918,9 @@ void Bot::FinalizePickup () {
     high_offset = 48.0f;
   }
 
-  // check if item is too high to reach, or if getting the item would hurt bot
-  if (pickup_pos.z > GetEyesPos ().z + high_offset || IsDeadlyMove (pickup_pos)) {
+  // check if item is too high to reach, or if getting the item would hurt bot (never ignore planted/dropped C4 objective)
+  if (pickup_type_ != Pickup::PlantedC4 && pickup_type_ != Pickup::DroppedC4 &&
+      (pickup_pos.z > GetEyesPos ().z + high_offset || IsDeadlyMove (pickup_pos))) {
     ignored_items_.push (pickup_item_);
     pickup_item_ = nullptr;
     pickup_type_ = Pickup::None;
@@ -1923,13 +1973,16 @@ bool Bot::IsLineBlockedBySmoke (const ystl::Vector &from, const ystl::Vector &to
   const ystl::Vector delta = to - from;
   const float seg_length_sq = delta.length_sq ();
 
-  if (ystl::fzero (seg_length_sq)) {
+  // Close targets and thin outer smoke remain visible and shootable
+  if (seg_length_sq < ystl::sqrf (140.0f)) {
     return false;
   }
   const float smoke_radius = cv_smoke_grenade_radius.As<float> ();
-  const float smoke_radius_sq = ystl::sqrf (smoke_radius);
+  const float dense_radius = ystl::min (smoke_radius * 0.42f, 95.0f);
+  const float dense_radius_sq = ystl::sqrf (dense_radius);
+  const float seg_length = ystl::sqrtf (seg_length_sq);
 
-  // sight length covered by smoke clouds
+  // optical depth covered by the dense core of smoke clouds (thin outer smoke does not block)
   float smoked_length = 0.0f;
 
   for (const auto &grenade : game_state.GetActiveGrenades ()) {
@@ -1952,12 +2005,12 @@ bool Bot::IsLineBlockedBySmoke (const ystl::Vector &from, const ystl::Vector &to
     if (!(pent->v.flags & FL_ONGROUND)) {
       continue;
     }
-    const auto &smoke_origin = grenade.origin;
+    const auto smoke_origin = grenade.origin + ystl::Vector (0.0f, 0.0f, 24.0f);
 
-    // chord of the sight segment inside the smoke sphere
+    // chord of the sight segment inside the dense smoke core
     const ystl::Vector rel = from - smoke_origin;
     const float proj = rel | delta;
-    const float disc = proj * proj - seg_length_sq * (rel.length_sq () - smoke_radius_sq);
+    const float disc = proj * proj - seg_length_sq * (rel.length_sq () - dense_radius_sq);
 
     if (disc <= 0.0f) {
       continue;
@@ -1967,12 +2020,14 @@ bool Bot::IsLineBlockedBySmoke (const ystl::Vector &from, const ystl::Vector &to
     const float exit = ystl::min ((-proj + root) / seg_length_sq, 1.0f);
 
     if (exit > enter) {
-      smoked_length += (exit - enter) * ystl::sqrtf (seg_length_sq);
+      const ystl::Vector mid = from + delta * ((enter + exit) * 0.5f);
+      const float density = ystl::clamp (1.0f - mid.distance_sq (smoke_origin) / dense_radius_sq, 0.0f, 1.0f);
+      smoked_length += (exit - enter) * seg_length * density;
     }
   }
 
-  // bots see thru a short smoked stretch
-  return smoked_length > 0.7f * smoke_radius;
+  // bots see and shoot through thin smoke; only thick center smoke blocks sight
+  return smoked_length > 1.15f * dense_radius;
 }
 
 } // namespace bot

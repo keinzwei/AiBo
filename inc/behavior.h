@@ -118,6 +118,8 @@ public:
 // bot core behavior data mixin
 class BehaviorData {
   friend class DebugPanel;
+  friend class HumanCopycat;
+  friend class HumanArena;
   friend struct TestHook;
   friend struct ChatHook;
   friend struct BuyHook;

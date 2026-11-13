@@ -14,6 +14,7 @@ public:
   static bool Scout (const Bot &bot);
   static bool Active (const Bot &bot);
   static bool Move (Bot &bot, HumanCommand &command, ystl::Vector &desired, bool available);
+  static void ReinforceNear (const ystl::Vector &foot, Team team, float reward);
   static void Status ();
   static bool Walkable (Bot &bot,const ystl::Vector &from_foot,const ystl::Vector &to_foot);
 #if defined(YSTL_TESTS)

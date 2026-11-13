@@ -4,15 +4,15 @@
 
 **AiBo creator and project maintainer: K9_einzwei** (GitHub: [keinzwei](https://github.com/keinzwei)).
 
-[![Version](https://img.shields.io/badge/version-4.3.3-blue)](https://github.com/keinzwei/AiBo/releases/tag/v4.3.3)
+[![Version](https://img.shields.io/badge/version-4.3.5-blue)](https://github.com/keinzwei/AiBo/releases/tag/v4.3.5)
 [![Platform](https://img.shields.io/badge/release-Windows%20x86-0078D4)](https://github.com/keinzwei/AiBo/releases)
 [![License](https://img.shields.io/badge/license-GPL--2.0--or--later-green)](LICENSE)
 
-[Download installer](https://github.com/keinzwei/AiBo/releases/tag/v4.3.3) · [Bahasa Indonesia](README.id.md) · [Build guide](docs/human-copycat/BUILD.md) · [Credits](CREDITS.md)
+[Download installer](https://github.com/keinzwei/AiBo/releases/tag/v4.3.5) · [Bahasa Indonesia](README.id.md) · [Build guide](docs/human-copycat/BUILD.md) · [Credits](CREDITS.md)
 
 AiBo combines YaPB's navigation and tactical foundation with the Human Copycat extension: controlled aim, observed human movement, lightweight online learning, geometry exploration and persistent match experience. It runs locally inside the game, without a cloud AI service, GPU, downloaded language model or API subscription.
 
-This repository publishes **AiBo 4.3.3**, an independent community fork, not an official YaPB release.
+This repository publishes **AiBo 4.3.5**, an independent community fork, not an official YaPB release.
 
 ## Features
 
@@ -31,7 +31,7 @@ This repository publishes **AiBo 4.3.3**, an independent community fork, not an 
 
 ## Install on Windows
 
-1. Download **`AiBo-4.3.3-Setup.exe`** from [Releases](https://github.com/keinzwei/AiBo/releases/tag/v4.3.3).
+1. Download **`AiBo-4.3.5-Setup.exe`** from [Releases](https://github.com/keinzwei/AiBo/releases/tag/v4.3.5).
 2. Close Counter-Strike and HLDS.
 3. Run the installer and select your Counter-Strike folder or its `cstrike` folder.
 4. Start a map and check the console:
@@ -100,12 +100,12 @@ The [build guide](docs/human-copycat/BUILD.md) covers Windows x86, MinGW, MSVC a
 
 | Guide | Contents |
 | --- | --- |
-| [Release notes](RELEASE-4.3.3-ID.md) | Changes and defaults. |
+| [Release notes](RELEASE-4.3.5-ID.md) | Changes and defaults. |
 | [Human Copycat](HUMAN_COPYCAT.md) | Integration and persistent formats. |
-| [Human Aim](HUMAN-AIM-4.3.3-ID.md) | Aim, perception and movement. |
+| [Human Aim](HUMAN-AIM-4.3.5-ID.md) | Aim, perception and movement. |
 | [Learning](LEARNING-ID.md) | Six local learning mechanisms. |
 | [Exploration and dialogue](EXPLORE-CHAT-ID.md) | Geometry and conversations. |
-| [Player profiles](PRO-PROFILES-4.3.3-ID.md) | Roles, rankings, sources and weighting. |
+| [Player profiles](PRO-PROFILES-4.3.5-ID.md) | Roles, rankings, sources and weighting. |
 | [Final systems](FINAL-GUIDE-ID.md) | Strategy memory and personalities. |
 | [Validation](docs/VALIDATION.md) | Test evidence and limits. |
 | [Build](docs/human-copycat/BUILD.md) | Bot and installer compilation. |

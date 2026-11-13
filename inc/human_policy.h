@@ -19,12 +19,16 @@ inline float RankPower (const edict_t *ent) {
   return p ? rbcc::rankPower (p->rank) : 1.0f;
 }
 
-// Deterministic fractional rounding varies 5-bot teams between 1 and 2 AWPs
-// at 25%, while always retaining a rifle majority for teams of 3 or more.
+// Enforces exact 50% AWP and 50% AK-47/M4A1 split when percent == 50
+// (e.g., 5 AWPs + 5 AK-47/M4A1 on a 10-bot team), and scales proportionally for any percent.
 constexpr int SniperQuota (int count, int percent, unsigned round) {
   if (count <= 0 || percent <= 0) return 0;
-  const int target = (count * ystl::clamp (percent, 0, 100) + static_cast<int> ((round * 37u) % 100u)) / 100;
-  return ystl::min (target, count >= 3 ? (count - 1) / 2 : count);
+  const int clamped = ystl::clamp (percent, 0, 100);
+  if (clamped == 50) {
+    return (count % 2 == 0) ? (count / 2) : ((count / 2) + static_cast<int> (round & 1u));
+  }
+  const int target = (count * clamped + static_cast<int> ((round * 37u) % 100u)) / 100;
+  return ystl::clamp (target, 0, count);
 }
 
 // Immutable commands: gamedef.cfg must not redirect an allowed ID to a

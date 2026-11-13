@@ -373,6 +373,9 @@ public:
   void CachePoint (int index);
   void CalculatePathRadius (int index);
   void SeedBasicNodes ();
+  void BootstrapInMemoryGraph ();
+  void FinalizeInMemoryGraph ();
+  void ClearChangedFlag () { has_changed_ = false; }
   void SetSearchIndex (int index);
   void StartLearnJump ();
   void SetVisited (int index);
