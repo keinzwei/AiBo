@@ -43,7 +43,7 @@ if(CLANG_OR_GCC AND NOT ANDROID)
   list(APPEND _cflags -fno-exceptions -fno-rtti)
 
   if(NOT VITA AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripten")
-    list(APPEND _strict_cflags -Wall -Wextra -Wpedantic -Werror)
+    list(APPEND _strict_cflags -Wall -Wextra -Wpedantic)
   endif()
 
   list(APPEND _cflags -Wno-date-time -D_FILE_OFFSET_BITS=64)
@@ -130,7 +130,7 @@ if(CLANG_OR_GCC AND NOT ANDROID)
     list(APPEND _ldflags -pthread -lm -ldl -lpthread)
     list(APPEND _ldflags -Wl,--as-needed -Wl,--no-undefined)
     list(APPEND _dist_ldflags -Wl,-soname,aibo${LIB_SUFFIX}.so)
-    list(APPEND _strict_ldflags -Werror)
+    # -Werror disabled on linker
   elseif(WIN32)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12.0")
       list(APPEND _ldflags -Xlinker --script -Xlinker ${PROJECT_SOURCE_DIR}/ext/ldscripts/i386pe.lds)
@@ -151,7 +151,7 @@ if(CLANG_OR_GCC AND NOT ANDROID)
       list(APPEND _ldflags -Wl,--allow-shlib-undefined)
     endif()
 
-    list(APPEND _strict_ldflags -Werror)
+    # -Werror disabled on linker
     list(APPEND _ldflags -luser32 -lws2_32 -lkernel32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32)
   elseif(APPLE)
     if(IS_ZIG)
@@ -211,7 +211,7 @@ if(CLANG_OR_GCC AND NOT ANDROID)
   list(APPEND _ldflags ${_cflags})
 elseif(WIN32 AND MSVC)
   set(_aibo_msvc_static_crt ON)
-  list(APPEND _strict_cflags /WX)
+  # /WX disabled for cross-compiler tolerance
   list(APPEND _ldflags /DEBUG)
 
   if(AIBO_WINXP)

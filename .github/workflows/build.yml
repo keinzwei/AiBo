@@ -32,7 +32,7 @@ jobs:
         run: python tools/check_dll.py --arch i386 build/windows/Release/AiBo.dll
       - uses: actions/upload-artifact@v7
         with:
-          name: AiBo-4.3.3-Windows-x86
+          name: AiBo-4.3.5-Windows-x86
           path: |
             build/windows/Release/AiBo.dll
             cfg/

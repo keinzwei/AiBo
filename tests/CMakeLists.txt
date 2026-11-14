@@ -1,3 +1,4 @@
+add_compile_definitions(YSTL_TESTS)
 #
 # AiBo test suite (fake engine harness)
 #

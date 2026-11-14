@@ -1506,4 +1506,49 @@ TEST_CASE ("release433/hunt_rejects_disconnected_region_nodes") {
   graph.PopulateNodes ();HumanCopycatHook::CurrentNode (*f.bot,0);f.bot->pev->origin=graph[0].origin;
   CHECK (HumanArena::PatrolGoal (*f.bot)<0); // endpoints exist but no connected route: no invented path
 }
+TEST_CASE ("release433/pro_movement_double_duck_and_strafe_jump") {
+  Fixture f; HOST_REQUIRE (f.Start ("de_pro_move433")); EnableAim431 (f,100);
+  cv_human_movement.Set (1); cv_human_aim_techniques.Set (1); cv_human_aim_crouchhop.Set (0);
+  f.bot->pev->velocity={180.0f,0.0f,0.0f}; const auto vel=f.bot->pev->velocity;
+  HumanCopycatHook::States (*f.bot,Sense::HearingEnemy);
+  HumanCopycat::ResetBot (*f.bot); HumanAimCoach::Update (*f.bot,nullptr);
+  HumanCopycatHook::Rng (*f.bot).force_chance (true);
+  unsigned duck_edges=0; bool prev_duck=false;
+  for (int i=0;i<12;++i) {
+    auto cmd=MakeCommand (); HumanCopycat::Finalize (*f.bot,cmd);
+    const bool ducking=(cmd.buttons&IN_DUCK)!=0;
+    if (ducking && !prev_duck) ++duck_edges;
+    prev_duck=ducking;
+    CHECK (f.bot->pev->velocity==vel);
+    f.engine.AdvanceTime (0.025f);
+  }
+  HumanCopycatHook::Rng (*f.bot).clear_forced ();
+  CHECK (duck_edges==2); // pro double-duck works even when human_aim_level=100 and techniques=1
+
+  // Strafe jump: pre-strafe takeoff + 2-phase S-curve air-strafe + timed crouch-tuck
+  cv_human_aim_crouchhop.Set (1); ExploreFloor (f);
+  f.engine.AdvanceTime (2.0f);
+  auto takeoff=MakeCommand (); HumanCopycat::Finalize (*f.bot,takeoff);
+  CHECK ((takeoff.buttons&IN_JUMP)!=0);
+  CHECK (std::fabs (takeoff.side)>100.0f);
+  CHECK ((takeoff.buttons&(IN_MOVELEFT|IN_MOVERIGHT))!=0);
+  const float first_side = takeoff.side;
+
+  f.bot->pev->flags&=~FL_ONGROUND;
+  f.engine.AdvanceTime (0.10f);
+  auto air1=MakeCommand (); HumanCopycat::Finalize (*f.bot,air1);
+  CHECK (std::fabs (air1.forward)<0.01f && !(air1.buttons&IN_FORWARD));
+  CHECK (air1.side*first_side>0.0f && std::fabs (air1.side)>150.0f);
+  CHECK ((air1.buttons&IN_DUCK)!=0);
+
+  f.engine.AdvanceTime (0.20f); // t=0.30s in air -> second phase counter-strafe S-curve
+  auto air2=MakeCommand (); HumanCopycat::Finalize (*f.bot,air2);
+  CHECK (std::fabs (air2.forward)<0.01f && !(air2.buttons&IN_FORWARD));
+  CHECK (air2.side*first_side<0.0f && std::fabs (air2.side)>150.0f);
+  CHECK ((air2.buttons&IN_DUCK)!=0);
+
+  f.engine.AdvanceTime (0.15f); // t=0.45s in air -> releases duck before flat landing
+  auto air3=MakeCommand (); HumanCopycat::Finalize (*f.bot,air3);
+  CHECK (!(air3.buttons&IN_DUCK));
+}
 } // namespace bot
