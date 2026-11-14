@@ -154,7 +154,11 @@ namespace ystl {
 
 // define export macros
 #if !defined(__GNUC__) || defined(YSTL_WINDOWS)
-  #define YSTL_FORCE_STACK_ALIGN
+  #if defined(__GNUC__) && defined(__i386__)
+    #define YSTL_FORCE_STACK_ALIGN __attribute__((force_align_arg_pointer))
+  #else
+    #define YSTL_FORCE_STACK_ALIGN
+  #endif
   #define YSTL_EXPORT YSTL_C_LINKAGE __declspec(dllexport)
   #define YSTL_STDCALL __stdcall
 #else

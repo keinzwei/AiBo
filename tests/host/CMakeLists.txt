@@ -205,7 +205,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     "${PROJECT_SOURCE_DIR}/src/copycat/copycat_explore.cpp"
     "${PROJECT_SOURCE_DIR}/src/copycat/copycat_dialogue.cpp"
     "${PROJECT_SOURCE_DIR}/src/copycat/copycat_final.cpp"
+    "${PROJECT_SOURCE_DIR}/src/copycat/copycat_aim.cpp"
     PROPERTIES COMPILE_OPTIONS "-w")
-  set_source_files_properties("${PROJECT_SOURCE_DIR}/src/human_copycat.cpp" "${PROJECT_SOURCE_DIR}/src/human_explore.cpp" "${PROJECT_SOURCE_DIR}/src/human_final.cpp" "${PROJECT_SOURCE_DIR}/src/human_chat.cpp"
+  set_source_files_properties("${PROJECT_SOURCE_DIR}/src/human_copycat.cpp" "${PROJECT_SOURCE_DIR}/src/human_explore.cpp" "${PROJECT_SOURCE_DIR}/src/human_final.cpp" "${PROJECT_SOURCE_DIR}/src/human_chat.cpp" "${PROJECT_SOURCE_DIR}/src/human_aim.cpp"
     PROPERTIES COMPILE_OPTIONS "-Wno-effc++;-Wno-zero-as-null-pointer-constant")
 endif()
