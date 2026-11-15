@@ -1,12 +1,12 @@
-# Panduan FINAL 4.3.5
+# Panduan FINAL 4.3.3
 
-Tambahan 4.3.5: **HUMAN-AIM-4.3.5-ID.md** menjelaskan level otomatis, teknik tembakan dan boost dua tahap pada box tinggi.
+Tambahan 4.3.3: **HUMAN-AIM-4.3.3-ID.md** menjelaskan level otomatis, teknik tembakan dan boost dua tahap pada box tinggi.
 
 ## Pasang dan mulai
 
-1. Tutup CS 1.6/HLDS, ekstrak seluruh ZIP, jalankan `AiBo-4.3.5-Setup.exe`, lalu pilih folder `cstrike` permainan. Installer mencadangkan berkas yang ditimpa dan menonaktifkan entri AiBo/RealBot lama di Metamod. Pengalaman belajar serta GRAPH yang sudah ada dipertahankan.
+1. Tutup CS 1.6/HLDS, ekstrak seluruh ZIP, jalankan `AiBo-4.3.3-Setup.exe`, lalu pilih folder `cstrike` permainan. Installer mencadangkan berkas yang ditimpa dan menonaktifkan entri AiBo/RealBot lama di Metamod. Pengalaman belajar serta GRAPH yang sudah ada dipertahankan.
 2. Pilih **Max Players = 32** sebelum membuat server. Untuk HLDS melalui command line, gunakan `-game cstrike +maxplayers 32 +map de_dust2` bersama opsi server milik Anda. Kuota bot tidak dapat memperbesar server 10 atau 16 slot yang sudah berjalan.
-3. Pastikan hanya satu AiBo aktif dengan `meta list`, lalu jalankan `aibo_human_status` dan `aibo_final_status`. Versi harus 4.3.5 FINAL. Bot masuk bertahap setelah penundaan awal server dan selama masih tersedia spawn point.
+3. Pastikan hanya satu AiBo aktif dengan `meta list`, lalu jalankan `aibo_human_status` dan `aibo_final_status`. Versi harus 4.3.3 FINAL. Bot masuk bertahap setelah penundaan awal server dan selama masih tersedia spawn point.
 4. Biarkan beberapa ronde berjalan agar overlay geometri, pengalaman, dan memori lokasi berkembang. File GRAPH dasar tetap diperlukan untuk membuat bot dan tugas native, tetapi tidak menjadi batas wilayah eksplorasi.
 
 Dengan 32 slot, satu manusia dapat bermain bersama 31 bot. Jika dua manusia sudah berada di server, kapasitas bot menjadi 30. Satu manusia + 31 bot mengisi semua slot; manusia berikutnya memerlukan slot kosong atau kebijakan reservasi server. Untuk selalu menyisakan satu slot tambahan pada kondisi itu, pakai `aibo_autovacate_keep_slots 2` sehingga bot maksimal 30. Tidak ada klaim bahwa tambahan manusia dapat menembus server yang penuh.
@@ -48,7 +48,7 @@ Bot mencari permukaan datar dengan kenaikan sekitar 60–132 unit di dekat pasan
 
 Jika memakai Semiclip, atur plugin tersebut agar tabrakan vertikal yang dibutuhkan untuk boost tetap bekerja, atau nonaktifkan no-block untuk pengujian boost. Paket ini tidak mengedit plugin AMXX Anda. Tanpa kontak fisik, percobaan akan dibatalkan. Bila ingin mematikan percobaan: `aibo_final_boost 0`.
 
-Pemilihan AWP mengikuti peran pada PRO-PROFILES-4.3.5-ID.md. Tidak semua bot menjadi sniper; penahanan sudut tidak menjamin posisi yang sama dipilih setiap ronde. Arah sniper diperiksa memakai geometri/pandangan. Penyisiran CT juga mengenali batas wilayah Dust2 untuk mencapai daerah yang jarang dikunjungi.
+Pemilihan AWP mengikuti peran pada PRO-PROFILES-4.3.3-ID.md. Tidak semua bot menjadi sniper; penahanan sudut tidak menjamin posisi yang sama dipilih setiap ronde. Arah sniper diperiksa memakai geometri/pandangan. Penyisiran CT juga mengenali batas wilayah Dust2 untuk mencapai daerah yang jarang dikunjungi.
 
 ## Data dan sifat generatif
 

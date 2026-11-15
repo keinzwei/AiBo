@@ -1,6 +1,6 @@
 # Auto detect text files and perform LF normalization
-# Preserve vendored bytes, including cryptographic fixtures and images.
-* -text
+* text=lf
+* text eol=lf
 
 # Custom for Visual Studio
 *.sln     merge=union

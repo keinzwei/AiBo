@@ -1,6 +1,6 @@
-# AiBo FINAL 4.3.5 — Artificial Intelligence Bot
+# AiBo FINAL 4.3.3 — Artificial Intelligence Bot
 
-Ekstrak ZIP, tutup CS/HLDS, lalu jalankan **AiBo-4.3.5-Setup.exe** di folder utama.
+Ekstrak ZIP, tutup CS/HLDS, lalu jalankan **AiBo-4.3.3-Setup.exe** di folder utama.
 Pilih folder Counter Strike atau cstrike. Installer memeriksa game saat melanjutkan
 halaman pilihan folder. Tidak memerlukan batch, CMD atau PowerShell.
 
@@ -22,8 +22,8 @@ DLL: `cstrike/addons/AiBo/bin/AiBo.dll`.
 Metamod: `win32 addons/AiBo/bin/AiBo.dll`.
 Console: `aibo version`, `aibo_human_aim_status`, `aibo_final_status`.
 
-Baca RELEASE-4.3.5-ID.md untuk perubahan, PRO-PROFILES-4.3.5-ID.md untuk 42 profil
-dan sumber HLTV, HUMAN-AIM-4.3.5-ID.md untuk teknik, serta VALIDATION.md untuk tes.
+Baca RELEASE-4.3.3-ID.md untuk perubahan, PRO-PROFILES-4.3.3-ID.md untuk 42 profil
+dan sumber HLTV, HUMAN-AIM-4.3.3-ID.md untuk teknik, serta VALIDATION.md untuk tes.
 Source lengkap: source/. Cara build: source/docs/human-copycat/BUILD.md.
 Data GRAPH/pembelajaran lama dimigrasikan dengan menyalin bila tujuan belum ada;
 GRAPH yang sudah terpasang dipertahankan. Fallback Dust2 disertakan dengan lisensinya.

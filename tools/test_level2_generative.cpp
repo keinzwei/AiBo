@@ -1,4 +1,4 @@
-// Level 2 Generative AI & 9-Bot Ultra-Light Cap Verification Suite for AiBo 4.3.5
+// Level 2 Generative AI & 9-Bot Ultra-Light Cap Verification Suite for AiBo 4.4.1
 #include "src/copycat/copycat_core.h"
 #include "src/copycat/copycat_lite.h"
 #include "src/copycat/copycat_learning.h"

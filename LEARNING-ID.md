@@ -1,4 +1,4 @@
-# Enam kemampuan belajar — AiBo 4.3.5
+# Enam kemampuan belajar — AiBo 4.3.3
 
 Semua kemampuan baru aktif secara default dalam DLL permainan dan AiBo.cfg.
 Ini implementasi pembelajaran online lokal yang ringan: tabel Q, prior demonstrasi
@@ -18,7 +18,7 @@ pengalaman pribadi pemain atau model yang sudah dilatih.
 
 ## Cara memakai
 
-1. Tutup CS/HLDS, ekstrak seluruh paket, lalu jalankan `AiBo-4.3.5-Setup.exe`.
+1. Tutup CS/HLDS, ekstrak seluruh paket, lalu jalankan `AiBo-4.3.3-Setup.exe`.
    Metamod harus sudah aktif. Pemasang mencadangkan file yang ditimpa,
    mempertahankan data belajar lama, dan menonaktifkan baris plugin AiBo/RealBot lama.
 2. Mulai map, tambahkan bot di kedua tim, lalu bermain seperti biasa.

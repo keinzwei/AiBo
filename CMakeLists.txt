@@ -16,7 +16,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-project(aibo VERSION 4.3.5 DESCRIPTION "Artificial Intelligence Bot" HOMEPAGE_URL "https://yapb.github.io/" LANGUAGES C CXX)
+project(aibo VERSION 4.3.3 DESCRIPTION "Artificial Intelligence Bot" HOMEPAGE_URL "https://yapb.github.io/" LANGUAGES C CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
@@ -30,10 +30,6 @@ option(AIBO_SANITIZE "Enable sanitizers, e.g. address or address,undefined (dev 
 option(AIBO_WITH_TLS "Enable HTTPS support via vendored mbedtls" ON)
 option(AIBO_BUILD_TESTS "Build test host (fake engine harness, native gcc/clang only, requires -DAIBO_64BIT=ON)" OFF)
 option(AIBO_WITH_AMXX "Build AMX Mod X module (i386 only)" ON)
-
-if(AIBO_BUILD_TESTS)
-  add_compile_definitions(YSTL_TESTS)
-endif()
 
 # android (ndk toolchain) fixes the abi for us: follow the pointer size instead of
 # the manual flag, so the parent never has to force AIBO_64BIT before adding us
@@ -142,10 +138,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     PROPERTIES COMPILE_OPTIONS "-w")
   set_source_files_properties(src/human_copycat.cpp src/human_explore.cpp src/human_final.cpp src/human_chat.cpp src/human_aim.cpp
     PROPERTIES COMPILE_OPTIONS "-Wno-effc++;-Wno-zero-as-null-pointer-constant")
-elseif(MSVC)
-  set_source_files_properties(src/copycat/copycat_core.cpp src/copycat/copycat_lite.cpp src/copycat/copycat_routes.cpp src/copycat/copycat_learning.cpp src/copycat/copycat_explore.cpp src/copycat/copycat_dialogue.cpp src/copycat/copycat_final.cpp src/copycat/copycat_aim.cpp
-    src/human_copycat.cpp src/human_explore.cpp src/human_final.cpp src/human_chat.cpp src/human_aim.cpp
-    PROPERTIES COMPILE_OPTIONS "/w")
 endif()
 
 if(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
@@ -168,8 +160,11 @@ endif()
 
 aibo_configure_target(${PROJECT_NAME} STRICT DIST)
 
-# Keep per-TU compilation so conditional #if defined(YSTL_TESTS) guards at top of TUs work across all compilers including MSVC
-set_target_properties(${PROJECT_NAME} PROPERTIES UNITY_BUILD OFF)
+# unity + pch: every src/*.cpp starts with <aibo.h>, parse it once (off for Debug and Android)
+if(NOT ANDROID AND (CMAKE_CONFIGURATION_TYPES OR NOT CMAKE_BUILD_TYPE MATCHES "Debug"))
+  set_target_properties(${PROJECT_NAME} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 8)
+  target_precompile_headers(${PROJECT_NAME} PRIVATE "${PROJECT_SOURCE_DIR}/inc/aibo.h")
+endif()
 
 # undecorated stdcall export alias, main library only: amxx has no such symbol
 if(WIN32 AND IS_ZIG AND NOT AIBO_64BIT AND NOT CPU_NON_X86)
