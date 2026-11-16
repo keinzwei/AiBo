@@ -1,5 +1,5 @@
 #if defined(YSTL_TESTS)
-// Human Copycat FINAL 4.3.3. GPL-2.0-or-later.
+// Human Copycat FINAL 4.3.5. GPL-2.0-or-later.
 #include "copycat/copycat_final.h"
 #include <algorithm>
 #include <cmath>
@@ -987,7 +987,7 @@ void HumanArena::Joined (Bot &b) {
   }
 }
 void HumanArena::Status () {
-  game.Print ("[FINAL 4.3.3] enabled=%d memory_profiles=%u decisions=%u repeat_fallbacks=%u boosts=%u aborted=%u lobby=%d bots=%d capacity=%d "
+  game.Print ("[FINAL 4.3.5] enabled=%d memory_profiles=%u decisions=%u repeat_fallbacks=%u boosts=%u aborted=%u lobby=%d bots=%d capacity=%d "
               "joins=%u leaves=%u",
     Enabled () ? 1 : 0, static_cast<unsigned> (memory.size ()), memory.sequence (), repeat_fallbacks, completed_boosts, failed_boosts,
     LobbyEnabled () ? 1 : 0, bots.GetBotCount (), LobbyEnabled () ? Capacity () : game.MaxClients (), arrivals, departures);

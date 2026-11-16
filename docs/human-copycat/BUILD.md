@@ -1,4 +1,4 @@
-# Build AiBo 4.3.3
+# Build AiBo 4.3.5
 
 Source sudah mencakup dependensi vendored. Kebutuhan: CMake 3.22+, compiler C++20,
 Python 3, dan Ninja/Make. Build DLL tidak membutuhkan runtime AMXX/Metamod.
@@ -28,7 +28,7 @@ python3 tools/check_dll.py --arch i386 build/windows/AiBo.dll
 Butuh i686 MinGW-w64 POSIX GCC/G++, binutils dan windres di PATH. Toolchain yang
 diekstrak manual mungkin membutuhkan CMAKE_RC_FLAGS dengan
 `--preprocessor=/path/i686-w64-mingw32-gcc-posix --preprocessor-arg=-E --preprocessor-arg=-xc --preprocessor-arg=-DRC_INVOKED`.
-Versi resource DLL 4.3.3.1; label produk AiBo 4.3.3.
+Versi resource DLL 4.3.5.1; label produk AiBo 4.3.5.
 
 MSVC (Windows x86; hasil CI tersedia pada tab Actions):
 
@@ -51,9 +51,9 @@ Worker C++20 dapat dibangun pada Linux sebagai berikut:
 ```sh
 g++ -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -DAIBO_INSTALL_TESTS installer/install_core.cpp installer/install_main.cpp -o build/AiBoInstall-test
 i686-w64-mingw32-g++-posix -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -static -static-libstdc++ -static-libgcc -mwindows -municode installer/install_core.cpp installer/install_main.cpp -lshell32 -o build/AiBoInstall.exe
-python3 tools/build_installer.py --binary build/windows/AiBo.dll --worker build/AiBoInstall.exe --payload-base ../install/cstrike --output ../AiBo-4.3.3-Setup.exe
+python3 tools/build_installer.py --binary build/windows/AiBo.dll --worker build/AiBoInstall.exe --payload-base ../install/cstrike --output ../AiBo-4.3.5-Setup.exe
 python3 tests/installer_test.py build/AiBoInstall-test build/installer/payload
-python3 tools/package_aibo.py --binary build/windows/AiBo.dll --installer ../AiBo-4.3.3-Setup.exe --output ../AiBo-4.3.3-Windows.zip
+python3 tools/package_aibo.py --binary build/windows/AiBo.dll --installer ../AiBo-4.3.5-Setup.exe --output ../AiBo-4.3.5-Windows.zip
 ```
 
 NSIS 3 harus tersedia (`--makensis` dapat menentukan executable). Builder memeriksa

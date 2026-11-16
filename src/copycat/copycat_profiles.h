@@ -1,7 +1,7 @@
 #pragma once
 #if defined(YSTL_TESTS)
-// AiBo 4.3.3: researched signature roles and historical annual HLTV peaks.
-// GPL-2.0-or-later. Sources and interpretation: PRO-PROFILES-4.3.3-ID.md.
+// AiBo 4.3.5: researched signature roles and historical annual HLTV peaks.
+// GPL-2.0-or-later. Sources and interpretation: PRO-PROFILES-4.3.5-ID.md.
 #include <array>
 #include <string>
 #include <string_view>

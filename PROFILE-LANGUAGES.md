@@ -36,7 +36,7 @@ Rujukan profil publik untuk perluasan roster antara lain:
 - [HLTV: XANTARES](https://www.hltv.org/player/7938/xantares)
 - [HLTV: gob b](https://www.hltv.org/player/136/gob-b)
 
-Nama klasik dan rujukan peringkat historis tetap ada di `PRO-PROFILES-4.3.3-ID.md`.
+Nama klasik dan rujukan peringkat historis tetap ada di `PRO-PROFILES-4.3.5-ID.md`.
 Empat belas tambahan internasional tidak semuanya termasuk kelompok Top 10
 historis yang menjadi syarat daftar klasik. Pool baru dapat dinonaktifkan dengan
 `aibo_human_international_roster 0` jika ingin tetap memakai hanya 28 nama lama.

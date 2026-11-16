@@ -1,8 +1,8 @@
-# Validasi AiBo 4.3.3
+# Validasi AiBo 4.3.5
 
 293/293 pengujian kode dan 11/11 skenario installer lulus setelah pembersihan source.
 DLL Windows x86 berhasil dibangun; 10 export engine/Metamod sesuai dan import hanya
-DLL sistem. Resource DLL 4.3.3.1. Installer NSIS EXE dibangun setelah validasi plugins.ini
+DLL sistem. Resource DLL 4.3.5.1. Installer NSIS EXE dibangun setelah validasi plugins.ini
 memastikan tepat satu `win32 addons/AiBo/bin/AiBo.dll` serta semua DLL rujukan tersedia.
 
 Tes baru memeriksa 42 peran pembelian pada kedua tim dan alias nama, pencegahan

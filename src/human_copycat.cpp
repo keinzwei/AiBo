@@ -1,5 +1,5 @@
 #if defined(YSTL_TESTS)
-// AiBo Human Copycat 4.3.3 FINAL. GPL-2.0-or-later.
+// AiBo Human Copycat 4.3.5 FINAL. GPL-2.0-or-later.
 // RealBot supplies the bounded RBCC library; AiBo retains navigation/tactics.
 #include "copycat/copycat_core.h"
 #include "copycat/copycat_routes.h"
@@ -545,7 +545,7 @@ void HumanCopycat::LevelStart () {
     game.RegisterEngineCommand ("aibo_human_aim_status", &HumanAimCoach::Status);
     commands_registered = true;
   }
-  game.Print ("[Human Copycat 4.3.3 FINAL] AiBo navigation/tactics + final human input controller. clips=%u", static_cast<unsigned> (database.size ()));
+  game.Print ("[Human Copycat 4.3.5 FINAL] AiBo navigation/tactics + final human input controller. clips=%u", static_cast<unsigned> (database.size ()));
 }
 void HumanCopycat::LevelStop () {
   for (auto &l : learners) CommitLearning (l, 0, true);
@@ -1116,11 +1116,11 @@ void HumanCopycat::Finalize (Bot &bot, HumanCommand &cmd) {
 unsigned HumanCopycat::RoundNumber () { return round_number; }
 void HumanCopycat::Status () {
   const auto &m = database.model (Profile ());
-  game.Print ("[Human Copycat 4.3.3 FINAL] loadout=AK47/M4A1,AWP,Deagle,USP,Glock18 roster_lock=%d chat=%d generated=%d awp_share=%d%%",
+  game.Print ("[Human Copycat 4.3.5 FINAL] loadout=AK47/M4A1,AWP,Deagle,USP,Glock18 roster_lock=%d chat=%d generated=%d awp_share=%d%%",
     cv_human_roster_lock.As<int> (), cv_chat.As<int> (), cv_human_generative_chat.As<int> (), cv_human_awp_percent.As<int> ());
   game.Print ("[Human Copycat] human nodes=%u edges=%u round=%u spread=%d",
     static_cast<unsigned> (human_routes.nodes ().size ()),static_cast<unsigned> (human_routes.edgeCount ()),round_number,SpreadActive () ? 1 : 0);
-  game.Print ("[Human Copycat 4.3.3 FINAL] enabled=%d clips=%u frames=%u recorded=%llu commands=%llu completed=%llu aborted=%llu",
+  game.Print ("[Human Copycat 4.3.5 FINAL] enabled=%d clips=%u frames=%u recorded=%llu commands=%llu completed=%llu aborted=%llu",
     Enabled () ? 1 : 0, static_cast<unsigned> (database.size ()), static_cast<unsigned> (database.frameCount ()),
     static_cast<unsigned long long> (recorded), static_cast<unsigned long long> (commands),
     static_cast<unsigned long long> (completed), static_cast<unsigned long long> (aborted));

@@ -1,4 +1,4 @@
-// AiBo 4.3.3 transactional installer engine. GPL-2.0-or-later.
+// AiBo 4.3.5 transactional installer engine. GPL-2.0-or-later.
 #include "install_core.h"
 #include <algorithm>
 #include <chrono>
@@ -194,9 +194,9 @@ void CheckDll (const std::string &s) {
   const size_t pe = U32 (s, 60);
   if (pe > s.size () - 24 || s.substr (pe, 4) != std::string ("PE\0\0", 4) || U16 (s, pe + 4) != 0x14c || !(U16 (s, pe + 22) & 0x2000))
     throw std::runtime_error ("AiBo.dll harus berupa DLL Windows x86 untuk CS 1.6.");
-  const std::u16string marker = u"AiBo 4.3.3";
+  const std::u16string marker = u"AiBo 4.3.5";
   if (s.find (std::string (reinterpret_cast<const char *> (marker.data ()), marker.size () * 2)) == std::string::npos)
-    throw std::runtime_error ("Versi/identitas AiBo.dll tidak sesuai installer 4.3.3.");
+    throw std::runtime_error ("Versi/identitas AiBo.dll tidak sesuai installer 4.3.5.");
 }
 void CheckSource (const fs::path &payload) {
   CheckDll (Read (payload / kDll));
@@ -244,7 +244,7 @@ std::string MergePlugins (const std::string &text) {
       if (Lower (t[0]) == "win32" && Slash (t[1]) == kDll && !aibo)
         aibo = true;
       else
-        line = "; disabled by AiBo 4.3.3: " + line;
+        line = "; disabled by AiBo 4.3.5: " + line;
     }
     else if (Lower (t[0]) == "win32" && Amxx (t[1]))
       amxx = true;
@@ -267,7 +267,7 @@ std::string MergeLiblist (const std::string &text) {
       added = true;
     }
     else
-      line = "// replaced by AiBo 4.3.3: " + line;
+      line = "// replaced by AiBo 4.3.5: " + line;
   }
   if (!added)
     lines.emplace_back ("gamedll \"addons/metamod/dlls/metamod.dll\"");
@@ -347,7 +347,7 @@ Result Install (const fs::path &input, const fs::path &requested, bool check_onl
     return result;
   }
   const auto stamp = std::chrono::high_resolution_clock::now ().time_since_epoch ().count ();
-  result.backup = game / "addons" / ("AiBo-backup-4.3.3-" + std::to_string (stamp));
+  result.backup = game / "addons" / ("AiBo-backup-4.3.5-" + std::to_string (stamp));
   NoLinks (result.backup);
   fs::create_directories (result.backup);
   std::vector<Change *> ordered;
@@ -431,12 +431,12 @@ Result Install (const fs::path &input, const fs::path &requested, bool check_onl
       }
     }
     if (!restored)
-      throw std::runtime_error ("Instalasi gagal; sebagian file perlu dipulihkan dari folder AiBo-backup-4.3.3 di addons.");
+      throw std::runtime_error ("Instalasi gagal; sebagian file perlu dipulihkan dari folder AiBo-backup-4.3.5 di addons.");
     throw;
   }
   result.files = static_cast<unsigned> (ordered.size ());
   const auto report =
-    "AiBo 4.3.3 installed\r\nDLL: addons/AiBo/bin/AiBo.dll\r\nHUMAN AIM: 100 (Pro profile)\r\nBackup: " + result.backup.filename ().string () +
+    "AiBo 4.3.5 installed\r\nDLL: addons/AiBo/bin/AiBo.dll\r\nHUMAN AIM: 100 (Pro profile)\r\nBackup: " + result.backup.filename ().string () +
     "\r\n";
   try {
     Write (result.backup / "INSTALL-RESULT.txt", report);

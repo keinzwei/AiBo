@@ -1,6 +1,6 @@
 {
   "product": "AiBo",
-  "version": "4.3.3",
+  "version": "4.3.5",
   "date": "2026-10-26",
   "code_tests": {
     "passed": 293,
@@ -22,7 +22,7 @@
       "msvcrt.dll",
       "ws2_32.dll"
     ],
-    "version_resource": "4.3.3.1",
+    "version_resource": "4.3.5.1",
     "sha256": "aae08c70422d6450acca71df7140fb9e19fd06c12b8a09c950951f435df42ab5"
   },
   "installer_sha256": "01774a217e4789b0a816c9e74082d4d755569ee6eb5f95fece90a8ef6a5781ca",

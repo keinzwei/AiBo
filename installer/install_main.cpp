@@ -1,4 +1,4 @@
-// AiBo 4.3.3 native installer worker. GPL-2.0-or-later.
+// AiBo 4.3.5 native installer worker. GPL-2.0-or-later.
 #include "install_core.h"
 #include <fstream>
 #include <cstdlib>
@@ -36,7 +36,7 @@ int Run (const std::vector<fs::path> &args) {
 #endif
     const auto r = aibo_setup::Install (args[2], args[3], args[1] == "--check", fail_after);
     const auto u8 = r.backup.u8string ();
-    say ("AiBo 4.3.3 berhasil. DLL: addons/AiBo/bin/AiBo.dll; HUMAN AIM 100. Files=" + std::to_string (r.files) + "; preserved=" +
+    say ("AiBo 4.3.5 berhasil. DLL: addons/AiBo/bin/AiBo.dll; HUMAN AIM 100. Files=" + std::to_string (r.files) + "; preserved=" +
          std::to_string (r.preserved) + "; migrated=" + std::to_string (r.migrated) + "; backup=" + std::string (u8.begin (), u8.end ()));
     return 0;
   } catch (const std::exception &e) {

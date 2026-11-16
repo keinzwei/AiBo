@@ -1,4 +1,4 @@
-# AiBo Human Copycat 4.3.3
+# AiBo Human Copycat 4.3.5
 
 AiBo menggabungkan navigasi/taktik native, input aim yang dibatasi, pembelajaran
 lokal dan percakapan prosedural. Tidak memerlukan layanan AI, Python saat bermain,
@@ -10,13 +10,13 @@ model unduhan atau koneksi internet. Asal kode dan lisensi ada di NOTICE-AiBo.md
   memburu musuh. Sebagian CT menjaga objective. Kontak sah, bom dan tugas mendesak
   memiliki prioritas. Rute harus terhubung dan bisa dijalani secara fisik.
 - 42 profil memakai peran AWP/rifle dan bobot kemampuan dari peringkat tahunan
-  HLTV yang terverifikasi. Lihat PRO-PROFILES-4.3.3-ID.md untuk data dan sumber.
+  HLTV yang terverifikasi. Lihat PRO-PROFILES-4.3.5-ID.md untuk data dan sumber.
 - HUMAN AIM mengendalikan sudut pandang dan tombol tembak sebelum RunPlayerMove.
   Reaksi, kecepatan putaran, noise, recoil, tapping/burst/spray, scope dan momentum
   tetap dapat menghasilkan kesalahan. Engine menentukan spread, cooldown dan hit.
 - Visibilitas melewati trace/FOV/flash/smoke. Suara memakai event yang benar-benar
   terdengar; informasi memiliki umur dan ketidakpastian. Koordinat musuh tersembunyi
-  tidak diperbarui untuk mengarahkan wallbang. Lihat HUMAN-AIM-4.3.3-ID.md.
+  tidak diperbarui untuk mengarahkan wallbang. Lihat HUMAN-AIM-4.3.5-ID.md.
 - Navigasi memakai GRAPH, overlay jalur manusia dan eksplorasi geometri yang
   memeriksa lantai, ruang, koneksi dan kemajuan. Input jump/duck/boost tidak
   memberikan teleport atau velocity tambahan. Detail ada di EXPLORE-CHAT-ID.md.

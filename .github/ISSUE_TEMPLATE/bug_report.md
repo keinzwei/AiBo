@@ -21,7 +21,7 @@ If it's problem with AI behaviour, add video to help explain your problem.
  - Engine: [e.g. rehlds 3.8.0.702 / vanilla 8684]
  - GameDLL: [e.g. regamedll / vanilla]
  - Metamod: [e.g. metamod-r / metamod-p / metamod]
- - AiBo Version: [e.g. 4.3.3]
+ - AiBo Version: [e.g. 4.3.5]
  - Game mode: [e.g. csdm / public / zombie]
 
 Additionally, please provide list of AMX Mod X plugins: ``amxx plugins`` and list of Metamod plugins: ``meta plugins``.

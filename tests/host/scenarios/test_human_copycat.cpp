@@ -1393,9 +1393,9 @@ TEST_CASE ("aim431/objective_smoke_is_bought_with_real_budget") {
 namespace bot {
 TEST_CASE ("release432/runtime_identity_and_namespaces") {
   Fixture f; HOST_REQUIRE (f.Start ("de_aibo432_identity"));
-  CHECK (product.name == "AiBo" && product.version == "4.3.3");
+  CHECK (product.name == "AiBo" && product.version == "4.3.5");
   CHECK (product.name_lower == "AiBo" && product.cmd_pri == "aibo" && product.cmd_sec == "ab");
-  CHECK (std::string (::Plugin_info.name) == "AiBo" && std::string (::Plugin_info.version) == "4.3.3");
+  CHECK (std::string (::Plugin_info.name) == "AiBo" && std::string (::Plugin_info.version) == "4.3.5");
   CHECK (std::string (cv_human_aim_level.ptr->name) == "aibo_human_aim_level");
   CHECK (std::string (cv_quota.ptr->name) == "aibo_quota");
   CHECK (bstor.GetRunningPath ().find ("addons/AiBo") != ystl::String::InvalidIndex);

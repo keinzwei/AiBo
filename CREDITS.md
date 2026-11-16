@@ -1,6 +1,6 @@
 # Credits and source provenance
 
-AiBo 4.3.3 is an independent fork. Publication does not transfer authorship of upstream code or imply endorsement by projects, players or ranking providers.
+AiBo 4.3.5 is an independent fork. Publication does not transfer authorship of upstream code or imply endorsement by projects, players or ranking providers.
 
 | Component or contribution | Credit and provenance |
 | --- | --- |

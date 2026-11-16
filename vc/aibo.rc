@@ -23,13 +23,13 @@ FILETYPE 0x2 {
     BLOCK "StringFileInfo" {
       BLOCK "040904E4" {
          VALUE "CompanyName",       "AiBo Team"                                                               "\0"
-         VALUE "FileDescription",   "AiBo 4.3.3" "\0"
+         VALUE "FileDescription",   "AiBo 4.3.5" "\0"
          VALUE "LegalCopyright",    "Copyright (c) 2004-2026 YaPB Team"                                          "\0"
          VALUE "OriginalFilename",  "AiBo.dll"                                                                   "\0"
          VALUE "ProductName",       "AiBo"                                                                       "\0"
          VALUE "InternalName",      "AiBo DLL"                                                                   "\0"
-         VALUE "FileVersion",       "4.3.3 FINAL"                                       "\0"
-         VALUE "ProductVersion",    "4.3.3"                                       "\0"
+         VALUE "FileVersion",       "4.3.5 FINAL"                                       "\0"
+         VALUE "ProductVersion",    "4.3.5"                                       "\0"
          VALUE "SpecialBuild",      MODULE_BUILD_ID                                                              "\0"
       }
     }

@@ -15,7 +15,7 @@
 #  define MODULE_MACHINE "@BUILD_MACHINE@"
 #  define MODULE_COMPILER "@BUILD_COMPILER@"
 #  if defined(YSTL_TESTS)
-#    define MODULE_VERSION "4.3.3"
+#    define MODULE_VERSION "4.3.5"
 #    define MODULE_VERSION_FILE 4,3,3,@BUILD_COUNT@
 #  else
 #    define MODULE_VERSION "@BUILD_VERSION@"

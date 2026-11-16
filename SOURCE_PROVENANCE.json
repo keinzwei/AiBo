@@ -1,6 +1,6 @@
 {
   "fork": "AiBo",
-  "version": "4.3.3",
+  "version": "4.3.5",
   "base_repository": "https://github.com/yapb/yapb/",
   "base_commit": "7985904584a0755b216e17cc5de8c5fd28953895",
   "submodules": {

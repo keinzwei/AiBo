@@ -1,6 +1,6 @@
 # Publication validation — 2026-10-27
 
-This report records checks rerun while preparing the supplied AiBo 4.3.3 package for GitHub publication. Two zero-valued navigation priority-queue seeds were made explicitly float (`0.0f`) for strict MSVC compilation; their values and intended behavior are unchanged. Installer implementation and shipped binaries were not changed. Repository-facing documentation and issue templates were prepared for the independent fork.
+This report records checks rerun while preparing the supplied AiBo 4.3.5 package for GitHub publication. Two zero-valued navigation priority-queue seeds were made explicitly float (`0.0f`) for strict MSVC compilation; their values and intended behavior are unchanged. Installer implementation and shipped binaries were not changed. Repository-facing documentation and issue templates were prepared for the independent fork.
 
 | Check | Result |
 | --- | --- |
@@ -31,7 +31,7 @@ python3 tools/check_dll.py --arch i386 /path/to/full-package/install/cstrike/add
 ## Original binary checksums
 
 ```text
-01774a217e4789b0a816c9e74082d4d755569ee6eb5f95fece90a8ef6a5781ca  AiBo-4.3.3-Setup.exe
+01774a217e4789b0a816c9e74082d4d755569ee6eb5f95fece90a8ef6a5781ca  AiBo-4.3.5-Setup.exe
 aae08c70422d6450acca71df7140fb9e19fd06c12b8a09c950951f435df42ab5  AiBo.dll
 ```
 

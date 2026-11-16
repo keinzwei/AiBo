@@ -1,5 +1,5 @@
 #if defined(YSTL_TESTS)
-// FINAL 4.3.3 HUMAN AIM. GPL-2.0-or-later.
+// FINAL 4.3.5 HUMAN AIM. GPL-2.0-or-later.
 #include "copycat/copycat_aim.h"
 #include <algorithm>
 #include <array>
@@ -645,7 +645,7 @@ bool HumanAimCoach::Finish (Bot &b, HumanCommand &cmd, bool visible, bool wall, 
   return fire;
 }
 void HumanAimCoach::Status () {
-  game.Print ("[HUMAN AIM 4.3.3] enabled=%d manual=%.0f profiles=%u baseline=4.3.0; aim is fallible, engine spread/cooldown unchanged",
+  game.Print ("[HUMAN AIM 4.3.5] enabled=%d manual=%.0f profiles=%u baseline=4.3.0; aim is fallible, engine spread/cooldown unchanged",
     Enabled () ? 1 : 0, static_cast<double> (cv_human_aim_level.As<float> ()), static_cast<unsigned> (knowledge.size ()));
   for (const auto &b : bots) {
     const auto &a = shooters[b.Index ()];
