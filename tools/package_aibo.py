@@ -11,7 +11,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLE = ROOT.parent
-VERSION = '4.3.3'
+VERSION = '4.3.5'
 PREFIX = f'AiBo-{VERSION}'
 
 

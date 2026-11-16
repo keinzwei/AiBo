@@ -1,10 +1,10 @@
-# AiBo 4.4.1 (Upgrade Level 5 Apex: Self-Modifying Neuroevolution & Hebbian Plasticity ~99,9% Otonom — Instalasi Single-DLL dengan Penyimpanan Kurikulum Mandiri yang Terus Berkembang di Hard Disk)
+# AiBo 4.3.5 (Upgrade Level 5 Apex: Self-Modifying Neuroevolution & Hebbian Plasticity ~99,9% Otonom — Instalasi Single-DLL dengan Penyimpanan Kurikulum Mandiri yang Terus Berkembang di Hard Disk)
 
 **Bot Counter-Strike 1.6 berbasis C++20 dengan Self-Modifying ABCD Hebbian Plasticity, Structural Synaptic Neurogenesis & Pruning, Liquid Time-Constant (LTC) Recurrent Working Memory, Population Neuroevolution DNA Pool, Latent World Model (3-Step Mental Rollout), Evolving Skill Library (hingga 512 skill/map), Keseimbangan 10 Pemain (5v5), serta Instalasi 1 File `AiBo.dll` yang Otomatis Membuat Folder & File Pengetahuan Mandiri yang Terus Bertumbuh (`.MB`) di Hard Disk.**
 
 **Pembuat dan pengelola proyek dasar AiBo: K9_einzwei** (GitHub: [keinzwei](https://github.com/keinzwei)).
 
-[English](README.md) · [Unduh installer](https://github.com/keinzwei/AiBo/releases/tag/v4.3.3) · [Panduan build](docs/human-copycat/BUILD.md) · [Kredit](CREDITS.md)
+[English](README.md) · [Unduh installer](https://github.com/keinzwei/AiBo/releases/tag/v4.3.5) · [Panduan build](docs/human-copycat/BUILD.md) · [Kredit](CREDITS.md)
 
 ## Pembaruan Level 5 (Theoretical Apex ~99,9% Otonom & Self-Bootstrapping Single-DLL)
 

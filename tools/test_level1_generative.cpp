@@ -1,4 +1,4 @@
-// Level 1 Generative & Continuous AI Verification Suite for AiBo 4.4.1
+// Level 1 Generative & Continuous AI Verification Suite for AiBo 4.3.5
 #include "src/copycat/copycat_core.h"
 #include "src/copycat/copycat_learning.h"
 #include "src/copycat/copycat_final.h"

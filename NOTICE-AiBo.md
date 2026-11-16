@@ -1,4 +1,4 @@
-AiBo 4.3.3 — Artificial Intelligence Bot
+AiBo 4.3.5 — Artificial Intelligence Bot
 
 AiBo creator and project maintainer: K9_einzwei (GitHub: keinzwei).
 

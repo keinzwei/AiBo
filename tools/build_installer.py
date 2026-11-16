@@ -26,7 +26,7 @@ def preflight(payload):
     assert b[:2] == b'MZ' and b[pe:pe+4] == b'PE\0\0'
     assert struct.unpack_from('<H', b, pe+4)[0] == 0x14c
     assert struct.unpack_from('<H', b, pe+22)[0] & 0x2000
-    assert 'AiBo 4.3.3'.encode('utf-16le') in b
+    assert 'AiBo 4.3.5'.encode('utf-16le') in b
     ini = payload / 'addons/metamod/plugins.ini'
     active = []
     for line in ini.read_text(encoding='utf-8-sig').splitlines():
